@@ -42,6 +42,23 @@ import os
 import os.path
 import math
 
+substitutions = {
+    '2AS':'ASP', '3AH':'HIS', '5HP':'GLU', 'ACL':'ARG', 'AGM':'ARG', 'AIB':'ALA', 'ALM':'ALA', 'ALO':'THR', 'ALY':'LYS', 'ARM':'ARG',
+    'ASA':'ASP', 'ASB':'ASP', 'ASK':'ASP', 'ASL':'ASP', 'ASQ':'ASP', 'AYA':'ALA', 'BCS':'CYS', 'BHD':'ASP', 'BMT':'THR', 'BNN':'ALA',
+    'BUC':'CYS', 'BUG':'LEU', 'C5C':'CYS', 'C6C':'CYS', 'CCS':'CYS', 'CEA':'CYS', 'CGU':'GLU', 'CHG':'ALA', 'CLE':'LEU', 'CME':'CYS',
+    'CSD':'ALA', 'CSO':'CYS', 'CSP':'CYS', 'CSS':'CYS', 'CSW':'CYS', 'CSX':'CYS', 'CXM':'MET', 'CY1':'CYS', 'CY3':'CYS', 'CYG':'CYS',
+    'CYM':'CYS', 'CYQ':'CYS', 'DAH':'PHE', 'DAL':'ALA', 'DAR':'ARG', 'DAS':'ASP', 'DCY':'CYS', 'DGL':'GLU', 'DGN':'GLN', 'DHA':'ALA',
+    'DHI':'HIS', 'DIL':'ILE', 'DIV':'VAL', 'DLE':'LEU', 'DLY':'LYS', 'DNP':'ALA', 'DPN':'PHE', 'DPR':'PRO', 'DSN':'SER', 'DSP':'ASP',
+    'DTH':'THR', 'DTR':'TRP', 'DTY':'TYR', 'DVA':'VAL', 'EFC':'CYS', 'FLA':'ALA', 'FME':'MET', 'GGL':'GLU', 'GL3':'GLY', 'GLZ':'GLY',
+    'GMA':'GLU', 'GSC':'GLY', 'HAC':'ALA', 'HAR':'ARG', 'HIC':'HIS', 'HIP':'HIS', 'HMR':'ARG', 'HPQ':'PHE', 'HTR':'TRP', 'HYP':'PRO',
+    'IIL':'ILE', 'IYR':'TYR', 'KCX':'LYS', 'LLP':'LYS', 'LLY':'LYS', 'LTR':'TRP', 'LYM':'LYS', 'LYZ':'LYS', 'MAA':'ALA', 'MEN':'ASN',
+    'MHS':'HIS', 'MIS':'SER', 'MLE':'LEU', 'MPQ':'GLY', 'MSA':'GLY', 'MSE':'MET', 'MVA':'VAL', 'NEM':'HIS', 'NEP':'HIS', 'NLE':'LEU',
+    'NLN':'LEU', 'NLP':'LEU', 'NMC':'GLY', 'OAS':'SER', 'OCS':'CYS', 'OMT':'MET', 'PAQ':'TYR', 'PCA':'GLU', 'PEC':'CYS', 'PHI':'PHE',
+    'PHL':'PHE', 'PR3':'CYS', 'PRR':'ALA', 'PTR':'TYR', 'PYX':'CYS', 'SAC':'SER', 'SAR':'GLY', 'SCH':'CYS', 'SCS':'CYS', 'SCY':'CYS',
+    'SEL':'SER', 'SEP':'SER', 'SET':'SER', 'SHC':'CYS', 'SHR':'LYS', 'SMC':'CYS', 'SOC':'CYS', 'STY':'TYR', 'SVA':'SER', 'TIH':'ALA',
+    'TPL':'TRP', 'TPO':'THR', 'TPQ':'ALA', 'TRG':'LYS', 'TRO':'TRP', 'TYB':'TYR', 'TYQ':'TYR', 'TYS':'TYR', 'TYY':'TYR'
+}
+
 def overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
     
@@ -73,7 +90,7 @@ def overlayPoints(points1, points2):
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
 
-def addMissingAtoms(pdb, templates, missingAtoms, heavyAtomsOnly, omitUnknownMolecules):
+def addMissingAtoms(topology, positions, templates, missingAtoms, heavyAtomsOnly, omitUnknownMolecules):
     """Create a new Topology in which missing atoms have been added."""
         
     newTopology = app.Topology()
@@ -82,7 +99,7 @@ def addMissingAtoms(pdb, templates, missingAtoms, heavyAtomsOnly, omitUnknownMol
     existingAtomMap = {}
     addedAtomMap = {}
     addedOXT = []
-    for chain in pdb.topology.chains():
+    for chain in topology.chains():
         if omitUnknownMolecules and not any(residue.name in templates for residue in chain.residues()):
             continue
         newChain = newTopology.addChain()
@@ -97,13 +114,13 @@ def addMissingAtoms(pdb, templates, missingAtoms, heavyAtomsOnly, omitUnknownMol
                     newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
                     newAtoms.append(newAtom)
                     existingAtomMap[atom] = newAtom
-                    newPositions.append(pdb.positions[atom.index])
+                    newPositions.append(positions[atom.index])
             if residue in missingAtoms:
                 
                 # Find corresponding atoms in the residue and the template.
                 
                 template = templates[residue.name]
-                atomPositions = dict((atom.name, pdb.positions[atom.index]) for atom in residue.atoms())
+                atomPositions = dict((atom.name, positions[atom.index]) for atom in residue.atoms())
                 points1 = []
                 points2 = []
                 for atom in template.topology.atoms():
@@ -128,7 +145,7 @@ def addMissingAtoms(pdb, templates, missingAtoms, heavyAtomsOnly, omitUnknownMol
             # If a terminal OXT is missing, add it.
             
             if residue == chainResidues[-1] and residue.name in templates:
-                atomPositions = dict((atom.name, pdb.positions[atom.index].value_in_unit(unit.nanometer)) for atom in residue.atoms())
+                atomPositions = dict((atom.name, positions[atom.index].value_in_unit(unit.nanometer)) for atom in residue.atoms())
                 if 'OXT' not in atomPositions and all(name in atomPositions for name in ['C', 'O', 'CA']):
                     newAtom = newTopology.addAtom('OXT', oxygen, newResidue)
                     newAtoms.append(newAtom)
@@ -141,7 +158,7 @@ def addMissingAtoms(pdb, templates, missingAtoms, heavyAtomsOnly, omitUnknownMol
     
     # Add bonds from the original Topology.
     
-    for atom1, atom2 in pdb.topology.bonds():
+    for atom1, atom2 in topology.bonds():
         if atom1 in existingAtomMap and atom2 in existingAtomMap:
             newTopology.addBond(existingAtomMap[atom1], existingAtomMap[atom2])
     
@@ -174,6 +191,8 @@ def addMissingAtoms(pdb, templates, missingAtoms, heavyAtomsOnly, omitUnknownMol
 # Load the PDB file.
 
 pdb = app.PDBFile(sys.argv[1])
+topology = pdb.topology
+positions = pdb.positions
 
 # Load the templates.
 
@@ -183,10 +202,43 @@ for file in os.listdir('templates'):
     name = templatePdb.topology.residues().next().name
     templates[name] = templatePdb
 
+# Find non-standard residues to replace with standard versions.
+
+replaceResidues = [r for r in topology.residues() if r.name in substitutions]
+if len(replaceResidues) > 0:
+    deleteHeavyAtoms = set()
+    deleteHydrogens = set()
+    
+    # Find heavy atoms that should be deleted.
+    
+    for residue in replaceResidues:
+        residue.name = substitutions[residue.name]
+        template = templates[residue.name]
+        standardAtoms = set(atom.name for atom in template.topology.atoms())
+        for atom in residue.atoms():
+            if atom.element not in (None, hydrogen) and atom.name not in standardAtoms:
+                deleteHeavyAtoms.add(atom)
+        
+    # We should also delete any hydrogen bonded to a heavy atom that is being deleted.
+    
+    for atom1, atom2 in topology.bonds():
+        if atom1 not in deleteHeavyAtoms:
+            (atom1, atom2) = (atom2, atom1)
+        if atom1 in deleteHeavyAtoms:
+            if atom2.element in (None, hydrogen):
+                deleteHydrogens.add(atom2)
+    
+    # Delete them.
+    
+    modeller = app.Modeller(topology, positions)
+    modeller.delete(deleteHeavyAtoms.union(deleteHydrogens))
+    topology = modeller.topology
+    positions = modeller.positions
+
 # Loop over residues to see which ones have missing heavy atoms.
 
 missingAtoms = {}
-for residue in pdb.topology.residues():
+for residue in topology.residues():
     if residue.name in templates:
         template = templates[residue.name]
         atomNames = set(atom.name for atom in residue.atoms())
@@ -199,7 +251,7 @@ for residue in pdb.topology.residues():
 
 # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
 
-(newTopology, newPositions, newAtoms, existingAtomMap) = addMissingAtoms(pdb, templates, missingAtoms, True, True)
+(newTopology, newPositions, newAtoms, existingAtomMap) = addMissingAtoms(topology, positions, templates, missingAtoms, True, True)
 
 # Create a System for energy minimizing it.
 
@@ -214,11 +266,11 @@ for atom in existingAtomMap.itervalues():
 # If any heavy atoms were omitted, add them back to avoid steric clashes.
 
 nonbonded = [f for f in system.getForces() if isinstance(f, mm.CustomNonbondedForce)][0]
-for atom in pdb.topology.atoms():
-    if atom.element is not None and atom.element != hydrogen and atom not in existingAtomMap:
+for atom in topology.atoms():
+    if atom.element not in (None, hydrogen) and atom not in existingAtomMap:
         system.addParticle(0.0)
         nonbonded.addParticle([])
-        newPositions.append(pdb.positions[atom.index])
+        newPositions.append(positions[atom.index])
 
 # For efficiency, only compute interactions that involve a new atom.
 
@@ -234,7 +286,7 @@ state = context.getState(getPositions=True)
 
 # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
 
-(newTopology2, newPositions2, newAtoms2, existingAtomMap2) = addMissingAtoms(pdb, templates, missingAtoms, False, False)
+(newTopology2, newPositions2, newAtoms2, existingAtomMap2) = addMissingAtoms(topology, positions, templates, missingAtoms, False, False)
 
 # Copy over the minimized positions for the new atoms.
 
