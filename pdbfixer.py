@@ -42,7 +42,7 @@ import os
 import os.path
 import math
 
-substitutions = {
+_substitutions = {
     '2AS':'ASP', '3AH':'HIS', '5HP':'GLU', 'ACL':'ARG', 'AGM':'ARG', 'AIB':'ALA', 'ALM':'ALA', 'ALO':'THR', 'ALY':'LYS', 'ARM':'ARG',
     'ASA':'ASP', 'ASB':'ASP', 'ASK':'ASP', 'ASL':'ASP', 'ASQ':'ASP', 'AYA':'ALA', 'BCS':'CYS', 'BHD':'ASP', 'BMT':'THR', 'BNN':'ALA',
     'BUC':'CYS', 'BUG':'LEU', 'C5C':'CYS', 'C6C':'CYS', 'CCS':'CYS', 'CEA':'CYS', 'CGU':'GLU', 'CHG':'ALA', 'CLE':'LEU', 'CME':'CYS',
@@ -59,7 +59,7 @@ substitutions = {
     'TPL':'TRP', 'TPO':'THR', 'TPQ':'ALA', 'TRG':'LYS', 'TRO':'TRP', 'TYB':'TYR', 'TYQ':'TYR', 'TYS':'TYR', 'TYY':'TYR'
 }
 
-def overlayPoints(points1, points2):
+def _overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
     
     This is based on W. Kabsch, Acta Cryst., A34, pp. 828-829 (1978)."""
@@ -89,207 +89,213 @@ def overlayPoints(points1, points2):
     (u, s, v) = lin.svd(R)
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
-
-def addMissingAtoms(topology, positions, templates, missingAtoms, heavyAtomsOnly, omitUnknownMolecules):
-    """Create a new Topology in which missing atoms have been added."""
+class PDBFixer(object):
+    def __init__(self, pdb):
+        self.pdb = pdb
+        self.topology = pdb.topology
+        self.positions = pdb.positions
         
-    newTopology = app.Topology()
-    newPositions = []*unit.nanometer
-    newAtoms = []
-    existingAtomMap = {}
-    addedAtomMap = {}
-    addedOXT = []
-    for chain in topology.chains():
-        if omitUnknownMolecules and not any(residue.name in templates for residue in chain.residues()):
-            continue
-        newChain = newTopology.addChain()
-        chainResidues = list(chain.residues())
-        for residue in chain.residues():
-            newResidue = newTopology.addResidue(residue.name, newChain)
-            
-            # Add the existing heavy atoms.
-            
-            for atom in residue.atoms():
-                if not heavyAtomsOnly or (atom.element is not None and atom.element != hydrogen):
-                    newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
-                    newAtoms.append(newAtom)
-                    existingAtomMap[atom] = newAtom
-                    newPositions.append(positions[atom.index])
-            if residue in missingAtoms:
+        # Load the templates.
+        
+        self.templates = {}
+        for file in os.listdir('templates'):
+            templatePdb = app.PDBFile(os.path.join('templates', file))
+            name = templatePdb.topology.residues().next().name
+            self.templates[name] = templatePdb
+        
+    def _addAtomsToTopology(self, missingAtoms, heavyAtomsOnly, omitUnknownMolecules):
+        """Create a new Topology in which missing atoms have been added."""
+        
+        newTopology = app.Topology()
+        newPositions = []*unit.nanometer
+        newAtoms = []
+        existingAtomMap = {}
+        addedAtomMap = {}
+        addedOXT = []
+        for chain in self.topology.chains():
+            if omitUnknownMolecules and not any(residue.name in self.templates for residue in chain.residues()):
+                continue
+            newChain = newTopology.addChain()
+            chainResidues = list(chain.residues())
+            for residue in chain.residues():
+                newResidue = newTopology.addResidue(residue.name, newChain)
                 
-                # Find corresponding atoms in the residue and the template.
+                # Add the existing heavy atoms.
                 
-                template = templates[residue.name]
-                atomPositions = dict((atom.name, positions[atom.index]) for atom in residue.atoms())
-                points1 = []
-                points2 = []
+                for atom in residue.atoms():
+                    if not heavyAtomsOnly or (atom.element is not None and atom.element != hydrogen):
+                        newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
+                        newAtoms.append(newAtom)
+                        existingAtomMap[atom] = newAtom
+                        newPositions.append(self.positions[atom.index])
+                if residue in missingAtoms:
+                    
+                    # Find corresponding atoms in the residue and the template.
+                    
+                    template = self.templates[residue.name]
+                    atomPositions = dict((atom.name, self.positions[atom.index]) for atom in residue.atoms())
+                    points1 = []
+                    points2 = []
+                    for atom in template.topology.atoms():
+                        if atom.name in atomPositions:
+                            points1.append(atomPositions[atom.name].value_in_unit(unit.nanometer))
+                            points2.append(template.positions[atom.index].value_in_unit(unit.nanometer))
+                    
+                    # Compute the optimal transform to overlay them.
+                    
+                    (translate2, rotate, translate1) = _overlayPoints(points1, points2)
+                    
+                    # Add the missing atoms.
+                    
+                    addedAtomMap[residue] = {}
+                    for atom in missingAtoms[residue]:
+                        newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
+                        newAtoms.append(newAtom)
+                        addedAtomMap[residue][atom] = newAtom
+                        templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
+                        newPositions.append((mm.Vec3(*np.dot(rotate, templatePosition+translate2))+translate1)*unit.nanometer)
+                
+                # If a terminal OXT is missing, add it.
+                
+                if residue == chainResidues[-1] and residue.name in self.templates:
+                    atomPositions = dict((atom.name, self.positions[atom.index].value_in_unit(unit.nanometer)) for atom in residue.atoms())
+                    if 'OXT' not in atomPositions and all(name in atomPositions for name in ['C', 'O', 'CA']):
+                        newAtom = newTopology.addAtom('OXT', oxygen, newResidue)
+                        newAtoms.append(newAtom)
+                        addedOXT.append(newAtom)
+                        d_ca_o = atomPositions['O']-atomPositions['CA']
+                        d_ca_c = atomPositions['C']-atomPositions['CA']
+                        d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
+                        v = d_ca_o - d_ca_c*unit.dot(d_ca_c, d_ca_o)
+                        newPositions.append((atomPositions['O']+2*v)*unit.nanometer)
+        
+        # Add bonds from the original Topology.
+        
+        for atom1, atom2 in self.topology.bonds():
+            if atom1 in existingAtomMap and atom2 in existingAtomMap:
+                newTopology.addBond(existingAtomMap[atom1], existingAtomMap[atom2])
+        
+        # Add bonds that connect to new atoms.
+        
+        for residue in missingAtoms:
+            template = self.templates[residue.name]
+            atomsByName = dict((atom.name, atom) for atom in residue.atoms())
+            addedAtoms = addedAtomMap[residue]
+            for atom1, atom2 in template.topology.bonds():
+                if atom1 in addedAtoms or atom2 in addedAtoms:
+                    if atom1 in addedAtoms:
+                        bondAtom1 = addedAtoms[atom1]
+                    else:
+                        bondAtom1 = existingAtomMap[atomsByName[atom1.name]]
+                    if atom2 in addedAtoms:
+                        bondAtom2 = addedAtoms[atom2]
+                    else:
+                        bondAtom2 = existingAtomMap[atomsByName[atom2.name]]
+                    newTopology.addBond(bondAtom1, bondAtom2)
+        for atom1 in addedOXT:
+            atom2 = [atom for atom in atom1.residue.atoms() if atom.name == 'C'][0]
+            newTopology.addBond(atom1, atom2)
+        
+        # Return the results.
+        
+        return (newTopology, newPositions, newAtoms, existingAtomMap)
+    
+    def findNonstandardResidues(self):
+        return [r for r in self.topology.residues() if r.name in _substitutions]
+    
+    def replaceNonstandardResidues(self, replaceResidues):
+        if len(replaceResidues) > 0:
+            deleteHeavyAtoms = set()
+            deleteHydrogens = set()
+            
+            # Find heavy atoms that should be deleted.
+            
+            for residue in replaceResidues:
+                residue.name = _substitutions[residue.name]
+                template = self.templates[residue.name]
+                standardAtoms = set(atom.name for atom in template.topology.atoms())
+                for atom in residue.atoms():
+                    if atom.element not in (None, hydrogen) and atom.name not in standardAtoms:
+                        deleteHeavyAtoms.add(atom)
+                
+            # We should also delete any hydrogen bonded to a heavy atom that is being deleted.
+            
+            for atom1, atom2 in self.topology.bonds():
+                if atom1 not in deleteHeavyAtoms:
+                    (atom1, atom2) = (atom2, atom1)
+                if atom1 in deleteHeavyAtoms:
+                    if atom2.element in (None, hydrogen):
+                        deleteHydrogens.add(atom2)
+            
+            # Delete them.
+            
+            modeller = app.Modeller(self.topology, self.positions)
+            modeller.delete(deleteHeavyAtoms.union(deleteHydrogens))
+            self.topology = modeller.topology
+            self.positions = modeller.positions
+    
+    def findMissingAtoms(self):
+        missingAtoms = {}
+        for residue in self.topology.residues():
+            if residue.name in self.templates:
+                template = self.templates[residue.name]
+                atomNames = set(atom.name for atom in residue.atoms())
+                missing = []
                 for atom in template.topology.atoms():
-                    if atom.name in atomPositions:
-                        points1.append(atomPositions[atom.name].value_in_unit(unit.nanometer))
-                        points2.append(template.positions[atom.index].value_in_unit(unit.nanometer))
-                
-                # Compute the optimal transform to overlay them.
-                
-                (translate2, rotate, translate1) = overlayPoints(points1, points2)
-                
-                # Add the missing atoms.
-                
-                addedAtomMap[residue] = {}
-                for atom in missingAtoms[residue]:
-                    newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
-                    newAtoms.append(newAtom)
-                    addedAtomMap[residue][atom] = newAtom
-                    templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
-                    newPositions.append((mm.Vec3(*np.dot(rotate, templatePosition+translate2))+translate1)*unit.nanometer)
-            
-            # If a terminal OXT is missing, add it.
-            
-            if residue == chainResidues[-1] and residue.name in templates:
-                atomPositions = dict((atom.name, positions[atom.index].value_in_unit(unit.nanometer)) for atom in residue.atoms())
-                if 'OXT' not in atomPositions and all(name in atomPositions for name in ['C', 'O', 'CA']):
-                    newAtom = newTopology.addAtom('OXT', oxygen, newResidue)
-                    newAtoms.append(newAtom)
-                    addedOXT.append(newAtom)
-                    d_ca_o = atomPositions['O']-atomPositions['CA']
-                    d_ca_c = atomPositions['C']-atomPositions['CA']
-                    d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
-                    v = d_ca_o - d_ca_c*unit.dot(d_ca_c, d_ca_o)
-                    newPositions.append((atomPositions['O']+2*v)*unit.nanometer)
+                    if atom.name not in atomNames:
+                        missing.append(atom)
+                if len(missing) > 0:
+                    missingAtoms[residue] = missing
+        return missingAtoms
     
-    # Add bonds from the original Topology.
-    
-    for atom1, atom2 in topology.bonds():
-        if atom1 in existingAtomMap and atom2 in existingAtomMap:
-            newTopology.addBond(existingAtomMap[atom1], existingAtomMap[atom2])
-    
-    # Add bonds that connect to new atoms.
-    
-    for residue in missingAtoms:
-        template = templates[residue.name]
-        atomsByName = dict((atom.name, atom) for atom in residue.atoms())
-        addedAtoms = addedAtomMap[residue]
-        for atom1, atom2 in template.topology.bonds():
-            if atom1 in addedAtoms or atom2 in addedAtoms:
-                if atom1 in addedAtoms:
-                    bondAtom1 = addedAtoms[atom1]
-                else:
-                    bondAtom1 = existingAtomMap[atomsByName[atom1.name]]
-                if atom2 in addedAtoms:
-                    bondAtom2 = addedAtoms[atom2]
-                else:
-                    bondAtom2 = existingAtomMap[atomsByName[atom2.name]]
-                newTopology.addBond(bondAtom1, bondAtom2)
-    for atom1 in addedOXT:
-        atom2 = [atom for atom in atom1.residue.atoms() if atom.name == 'C'][0]
-        newTopology.addBond(atom1, atom2)
-    
-    # Return the results.
-    
-    return (newTopology, newPositions, newAtoms, existingAtomMap)
-
-
-# Load the PDB file.
-
-pdb = app.PDBFile(sys.argv[1])
-topology = pdb.topology
-positions = pdb.positions
-
-# Load the templates.
-
-templates = {}
-for file in os.listdir('templates'):
-    templatePdb = app.PDBFile(os.path.join('templates', file))
-    name = templatePdb.topology.residues().next().name
-    templates[name] = templatePdb
-
-# Find non-standard residues to replace with standard versions.
-
-replaceResidues = [r for r in topology.residues() if r.name in substitutions]
-if len(replaceResidues) > 0:
-    deleteHeavyAtoms = set()
-    deleteHydrogens = set()
-    
-    # Find heavy atoms that should be deleted.
-    
-    for residue in replaceResidues:
-        residue.name = substitutions[residue.name]
-        template = templates[residue.name]
-        standardAtoms = set(atom.name for atom in template.topology.atoms())
-        for atom in residue.atoms():
-            if atom.element not in (None, hydrogen) and atom.name not in standardAtoms:
-                deleteHeavyAtoms.add(atom)
+    def addMissingAtoms(self, missingAtoms):
+        # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
         
-    # We should also delete any hydrogen bonded to a heavy atom that is being deleted.
-    
-    for atom1, atom2 in topology.bonds():
-        if atom1 not in deleteHeavyAtoms:
-            (atom1, atom2) = (atom2, atom1)
-        if atom1 in deleteHeavyAtoms:
-            if atom2.element in (None, hydrogen):
-                deleteHydrogens.add(atom2)
-    
-    # Delete them.
-    
-    modeller = app.Modeller(topology, positions)
-    modeller.delete(deleteHeavyAtoms.union(deleteHydrogens))
-    topology = modeller.topology
-    positions = modeller.positions
+        (newTopology, newPositions, newAtoms, existingAtomMap) = self._addAtomsToTopology(missingAtoms, True, True)
+        
+        # Create a System for energy minimizing it.
+        
+        forcefield = app.ForceField('soft.xml')
+        system = forcefield.createSystem(newTopology)
+        
+        # Set any previously existing atoms to be massless, they so won't move.
+        
+        for atom in existingAtomMap.itervalues():
+            system.setParticleMass(atom.index, 0.0)
+        
+        # If any heavy atoms were omitted, add them back to avoid steric clashes.
+        
+        nonbonded = [f for f in system.getForces() if isinstance(f, mm.CustomNonbondedForce)][0]
+        for atom in self.topology.atoms():
+            if atom.element not in (None, hydrogen) and atom not in existingAtomMap:
+                system.addParticle(0.0)
+                nonbonded.addParticle([])
+                newPositions.append(self.positions[atom.index])
+        
+        # For efficiency, only compute interactions that involve a new atom.
+        
+        nonbonded.addInteractionGroup([atom.index for atom in newTopology.atoms() if atom in newAtoms], range(system.getNumParticles()))
+        
+        # Do an energy minimization.
+        
+        integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
+        context = mm.Context(system, integrator)
+        context.setPositions(newPositions)
+        mm.LocalEnergyMinimizer.minimize(context)
+        state = context.getState(getPositions=True)
+        
+        # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
+        
+        (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(missingAtoms, False, False)
+        
+        # Copy over the minimized positions for the new atoms.
+        
+        for a1, a2 in zip(newAtoms, newAtoms2):
+            newPositions2[a2.index] = state.getPositions()[a1.index]
+        app.PDBFile.writeFile(newTopology2, newPositions2, open('output.pdb', 'w'))
 
-# Loop over residues to see which ones have missing heavy atoms.
 
-missingAtoms = {}
-for residue in topology.residues():
-    if residue.name in templates:
-        template = templates[residue.name]
-        atomNames = set(atom.name for atom in residue.atoms())
-        missing = []
-        for atom in template.topology.atoms():
-            if atom.name not in atomNames:
-                missing.append(atom)
-        if len(missing) > 0:
-            missingAtoms[residue] = missing
-
-# Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
-
-(newTopology, newPositions, newAtoms, existingAtomMap) = addMissingAtoms(topology, positions, templates, missingAtoms, True, True)
-
-# Create a System for energy minimizing it.
-
-forcefield = app.ForceField('soft.xml')
-system = forcefield.createSystem(newTopology)
-
-# Set any previously existing atoms to be massless, they so won't move.
-
-for atom in existingAtomMap.itervalues():
-    system.setParticleMass(atom.index, 0.0)
-
-# If any heavy atoms were omitted, add them back to avoid steric clashes.
-
-nonbonded = [f for f in system.getForces() if isinstance(f, mm.CustomNonbondedForce)][0]
-for atom in topology.atoms():
-    if atom.element not in (None, hydrogen) and atom not in existingAtomMap:
-        system.addParticle(0.0)
-        nonbonded.addParticle([])
-        newPositions.append(positions[atom.index])
-
-# For efficiency, only compute interactions that involve a new atom.
-
-nonbonded.addInteractionGroup([atom.index for atom in newTopology.atoms() if atom in newAtoms], range(system.getNumParticles()))
-
-# Do an energy minimization.
-
-integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
-context = mm.Context(system, integrator)
-context.setPositions(newPositions)
-mm.LocalEnergyMinimizer.minimize(context)
-state = context.getState(getPositions=True)
-
-# Now create a new Topology, including all atoms from the original one and adding the missing atoms.
-
-(newTopology2, newPositions2, newAtoms2, existingAtomMap2) = addMissingAtoms(topology, positions, templates, missingAtoms, False, False)
-
-# Copy over the minimized positions for the new atoms.
-
-for a1, a2 in zip(newAtoms, newAtoms2):
-    newPositions2[a2.index] = state.getPositions()[a1.index]
-app.PDBFile.writeFile(newTopology2, newPositions2, open('output.pdb', 'w'))
+if __name__=='__main__':
+    fixer = PDBFixer(app.PDBFile(sys.argv[1]))
+    fixer.replaceNonstandardResidues(fixer.findNonstandardResidues())
+    fixer.addMissingAtoms(fixer.findMissingAtoms())
