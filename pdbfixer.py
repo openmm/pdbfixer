@@ -31,6 +31,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 __author__ = "Peter Eastman"
 __version__ = "1.0"
 
+import ui
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
@@ -42,7 +43,7 @@ import os
 import os.path
 import math
 
-_substitutions = {
+substitutions = {
     '2AS':'ASP', '3AH':'HIS', '5HP':'GLU', 'ACL':'ARG', 'AGM':'ARG', 'AIB':'ALA', 'ALM':'ALA', 'ALO':'THR', 'ALY':'LYS', 'ARM':'ARG',
     'ASA':'ASP', 'ASB':'ASP', 'ASK':'ASP', 'ASL':'ASP', 'ASQ':'ASP', 'AYA':'ALA', 'BCS':'CYS', 'BHD':'ASP', 'BMT':'THR', 'BNN':'ALA',
     'BUC':'CYS', 'BUG':'LEU', 'C5C':'CYS', 'C6C':'CYS', 'CCS':'CYS', 'CEA':'CYS', 'CGU':'GLU', 'CHG':'ALA', 'CLE':'LEU', 'CME':'CYS',
@@ -56,7 +57,7 @@ _substitutions = {
     'NLN':'LEU', 'NLP':'LEU', 'NMC':'GLY', 'OAS':'SER', 'OCS':'CYS', 'OMT':'MET', 'PAQ':'TYR', 'PCA':'GLU', 'PEC':'CYS', 'PHI':'PHE',
     'PHL':'PHE', 'PR3':'CYS', 'PRR':'ALA', 'PTR':'TYR', 'PYX':'CYS', 'SAC':'SER', 'SAR':'GLY', 'SCH':'CYS', 'SCS':'CYS', 'SCY':'CYS',
     'SEL':'SER', 'SEP':'SER', 'SET':'SER', 'SHC':'CYS', 'SHR':'LYS', 'SMC':'CYS', 'SOC':'CYS', 'STY':'TYR', 'SVA':'SER', 'TIH':'ALA',
-    'TPL':'TRP', 'TPO':'THR', 'TPQ':'ALA', 'TRG':'LYS', 'TRO':'TRP', 'TYB':'TYR', 'TYQ':'TYR', 'TYS':'TYR', 'TYY':'TYR'
+    'TPL':'TRP', 'TPO':'THR', 'TPQ':'ALA', 'TRG':'LYS', 'TRO':'TRP', 'TYB':'TYR', 'TYI':'TYR', 'TYQ':'TYR', 'TYS':'TYR', 'TYY':'TYR'
 }
 
 def _overlayPoints(points1, points2):
@@ -98,12 +99,13 @@ class PDBFixer(object):
         # Load the templates.
         
         self.templates = {}
-        for file in os.listdir('templates'):
-            templatePdb = app.PDBFile(os.path.join('templates', file))
+        templatesPath = os.path.join(os.path.dirname(__file__), 'templates')
+        for file in os.listdir(templatesPath):
+            templatePdb = app.PDBFile(os.path.join(templatesPath, file))
             name = templatePdb.topology.residues().next().name
             self.templates[name] = templatePdb
         
-    def _addAtomsToTopology(self, missingAtoms, heavyAtomsOnly, omitUnknownMolecules):
+    def _addAtomsToTopology(self, missingAtoms, missingTerminals, heavyAtomsOnly, omitUnknownMolecules):
         """Create a new Topology in which missing atoms have been added."""
         
         newTopology = app.Topology()
@@ -116,7 +118,6 @@ class PDBFixer(object):
             if omitUnknownMolecules and not any(residue.name in self.templates for residue in chain.residues()):
                 continue
             newChain = newTopology.addChain()
-            chainResidues = list(chain.residues())
             for residue in chain.residues():
                 newResidue = newTopology.addResidue(residue.name, newChain)
                 
@@ -157,9 +158,9 @@ class PDBFixer(object):
                 
                 # If a terminal OXT is missing, add it.
                 
-                if residue == chainResidues[-1] and residue.name in self.templates:
-                    atomPositions = dict((atom.name, self.positions[atom.index].value_in_unit(unit.nanometer)) for atom in residue.atoms())
-                    if 'OXT' not in atomPositions and all(name in atomPositions for name in ['C', 'O', 'CA']):
+                if residue in missingTerminals:
+                    atomPositions = dict((atom.name, newPositions[atom.index].value_in_unit(unit.nanometer)) for atom in newResidue.atoms())
+                    if 'OXT' in missingTerminals[residue]:
                         newAtom = newTopology.addAtom('OXT', oxygen, newResidue)
                         newAtoms.append(newAtom)
                         addedOXT.append(newAtom)
@@ -201,7 +202,7 @@ class PDBFixer(object):
         return (newTopology, newPositions, newAtoms, existingAtomMap)
     
     def findNonstandardResidues(self):
-        return [r for r in self.topology.residues() if r.name in _substitutions]
+        return [r for r in self.topology.residues() if r.name in substitutions]
     
     def replaceNonstandardResidues(self, replaceResidues):
         if len(replaceResidues) > 0:
@@ -211,7 +212,7 @@ class PDBFixer(object):
             # Find heavy atoms that should be deleted.
             
             for residue in replaceResidues:
-                residue.name = _substitutions[residue.name]
+                residue.name = substitutions[residue.name]
                 template = self.templates[residue.name]
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
                 for atom in residue.atoms():
@@ -236,66 +237,93 @@ class PDBFixer(object):
     
     def findMissingAtoms(self):
         missingAtoms = {}
-        for residue in self.topology.residues():
-            if residue.name in self.templates:
-                template = self.templates[residue.name]
-                atomNames = set(atom.name for atom in residue.atoms())
-                missing = []
-                for atom in template.topology.atoms():
-                    if atom.name not in atomNames:
-                        missing.append(atom)
-                if len(missing) > 0:
-                    missingAtoms[residue] = missing
-        return missingAtoms
+        missingTerminals = {}
+        
+        # Loop over residues.
+        
+        for chain in self.topology.chains():
+            chainResidues = list(chain.residues())
+            for residue in chain.residues():
+                if residue.name in self.templates:
+                    template = self.templates[residue.name]
+                    atomNames = set(atom.name for atom in residue.atoms())
+                    
+                    # Add atoms from the template that are missing.
+                    
+                    missing = []
+                    for atom in template.topology.atoms():
+                        if atom.name not in atomNames:
+                            missing.append(atom)
+                    if len(missing) > 0:
+                        missingAtoms[residue] = missing
+                    
+                    # Add missing terminal atoms.
+                    
+                    terminals = []
+                    if residue == chainResidues[-1]:
+                        templateNames = set(atom.name for atom in template.topology.atoms())
+                        if 'OXT' not in atomNames and all(name in templateNames for name in ['C', 'O', 'CA']):
+                            terminals.append('OXT')
+                        if len(terminals) > 0:
+                            missingTerminals[residue] = terminals
+        return (missingAtoms, missingTerminals)
     
-    def addMissingAtoms(self, missingAtoms):
+    def addMissingAtoms(self, missingAtoms, missingTerminals):
         # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
         
-        (newTopology, newPositions, newAtoms, existingAtomMap) = self._addAtomsToTopology(missingAtoms, True, True)
-        
-        # Create a System for energy minimizing it.
-        
-        forcefield = app.ForceField('soft.xml')
-        system = forcefield.createSystem(newTopology)
-        
-        # Set any previously existing atoms to be massless, they so won't move.
-        
-        for atom in existingAtomMap.itervalues():
-            system.setParticleMass(atom.index, 0.0)
-        
-        # If any heavy atoms were omitted, add them back to avoid steric clashes.
-        
-        nonbonded = [f for f in system.getForces() if isinstance(f, mm.CustomNonbondedForce)][0]
-        for atom in self.topology.atoms():
-            if atom.element not in (None, hydrogen) and atom not in existingAtomMap:
-                system.addParticle(0.0)
-                nonbonded.addParticle([])
-                newPositions.append(self.positions[atom.index])
-        
-        # For efficiency, only compute interactions that involve a new atom.
-        
-        nonbonded.addInteractionGroup([atom.index for atom in newTopology.atoms() if atom in newAtoms], range(system.getNumParticles()))
-        
-        # Do an energy minimization.
-        
-        integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
-        context = mm.Context(system, integrator)
-        context.setPositions(newPositions)
-        mm.LocalEnergyMinimizer.minimize(context)
-        state = context.getState(getPositions=True)
-        
-        # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
-        
-        (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(missingAtoms, False, False)
-        
-        # Copy over the minimized positions for the new atoms.
-        
-        for a1, a2 in zip(newAtoms, newAtoms2):
-            newPositions2[a2.index] = state.getPositions()[a1.index]
-        app.PDBFile.writeFile(newTopology2, newPositions2, open('output.pdb', 'w'))
+        (newTopology, newPositions, newAtoms, existingAtomMap) = self._addAtomsToTopology(missingAtoms, missingTerminals, True, True)
+        if len(newAtoms) > 0:
+            
+            # Create a System for energy minimizing it.
+            
+            res = list(newTopology.residues())
+            forcefield = app.ForceField(os.path.join(os.path.dirname(__file__), 'soft.xml'))
+            system = forcefield.createSystem(newTopology)
+            
+            # Set any previously existing atoms to be massless, they so won't move.
+            
+            for atom in existingAtomMap.itervalues():
+                system.setParticleMass(atom.index, 0.0)
+            
+            # If any heavy atoms were omitted, add them back to avoid steric clashes.
+            
+            nonbonded = [f for f in system.getForces() if isinstance(f, mm.CustomNonbondedForce)][0]
+            for atom in self.topology.atoms():
+                if atom.element not in (None, hydrogen) and atom not in existingAtomMap:
+                    system.addParticle(0.0)
+                    nonbonded.addParticle([])
+                    newPositions.append(self.positions[atom.index])
+            
+            # For efficiency, only compute interactions that involve a new atom.
+            
+            nonbonded.addInteractionGroup([atom.index for atom in newAtoms], range(system.getNumParticles()))
+            
+            # Do an energy minimization.
+            
+            integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
+            context = mm.Context(system, integrator)
+            context.setPositions(newPositions)
+            mm.LocalEnergyMinimizer.minimize(context)
+            state = context.getState(getPositions=True)
+            
+            # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
+            
+            (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(missingAtoms, missingTerminals, False, False)
+            
+            # Copy over the minimized positions for the new atoms.
+            
+            for a1, a2 in zip(newAtoms, newAtoms2):
+                newPositions2[a2.index] = state.getPositions()[a1.index]
+            self.processedTopology = newTopology2
+            self.processedPositions = newPositions2
 
 
 if __name__=='__main__':
-    fixer = PDBFixer(app.PDBFile(sys.argv[1]))
-    fixer.replaceNonstandardResidues(fixer.findNonstandardResidues())
-    fixer.addMissingAtoms(fixer.findMissingAtoms())
+    if len(sys.argv) < 2:
+        ui.launchUI()
+    else:
+        fixer = PDBFixer(app.PDBFile(sys.argv[1]))
+        fixer.replaceNonstandardResidues(fixer.findNonstandardResidues())
+        missingAtoms, missingTerminals = fixer.findMissingAtoms()
+        fixer.addMissingAtoms(missingAtoms, missingTerminals)
+        app.PDBFile.writeFile(fixer.processedTopology, fixer.processedPositions, open('output.pdb', 'w'))
