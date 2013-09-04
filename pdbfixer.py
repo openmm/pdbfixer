@@ -380,4 +380,4 @@ if __name__=='__main__':
         fixer.replaceNonstandardResidues(fixer.findNonstandardResidues())
         missingAtoms, missingTerminals = fixer.findMissingAtoms()
         fixer.addMissingAtoms(missingAtoms, missingTerminals)
-        app.PDBFile.writeFile(fixer.processedTopology, fixer.processedPositions, open('output.pdb', 'w'))
+        app.PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
