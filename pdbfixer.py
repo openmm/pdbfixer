@@ -126,7 +126,6 @@ class PDBFixer(object):
                 for atom in residue.atoms():
                     if not heavyAtomsOnly or (atom.element is not None and atom.element != hydrogen):
                         newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
-                        newAtoms.append(newAtom)
                         existingAtomMap[atom] = newAtom
                         newPositions.append(self.positions[atom.index])
                 if residue in missingAtoms:
@@ -206,32 +205,22 @@ class PDBFixer(object):
     
     def replaceNonstandardResidues(self, replaceResidues):
         if len(replaceResidues) > 0:
-            deleteHeavyAtoms = set()
-            deleteHydrogens = set()
-            
-            # Find heavy atoms that should be deleted.
+            deleteAtoms = []
+
+            # Find atoms that should be deleted.
             
             for residue in replaceResidues:
                 residue.name = substitutions[residue.name]
                 template = self.templates[residue.name]
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
                 for atom in residue.atoms():
-                    if atom.element not in (None, hydrogen) and atom.name not in standardAtoms:
-                        deleteHeavyAtoms.add(atom)
-                
-            # We should also delete any hydrogen bonded to a heavy atom that is being deleted.
-            
-            for atom1, atom2 in self.topology.bonds():
-                if atom1 not in deleteHeavyAtoms:
-                    (atom1, atom2) = (atom2, atom1)
-                if atom1 in deleteHeavyAtoms:
-                    if atom2.element in (None, hydrogen):
-                        deleteHydrogens.add(atom2)
+                    if atom.element in (None, hydrogen) or atom.name not in standardAtoms:
+                        deleteAtoms.append(atom)
             
             # Delete them.
             
             modeller = app.Modeller(self.topology, self.positions)
-            modeller.delete(deleteHeavyAtoms.union(deleteHydrogens))
+            modeller.delete(deleteAtoms)
             self.topology = modeller.topology
             self.positions = modeller.positions
     
