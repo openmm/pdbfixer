@@ -277,7 +277,7 @@ class PDBFixer(object):
             # Create a System for energy minimizing it.
             
             res = list(newTopology.residues())
-            forcefield = app.ForceField(os.path.join(os.path.dirname(__file__), 'soft.xml'))
+            forcefield = self._createForceField(newTopology)
             system = forcefield.createSystem(newTopology)
             
             # Set any previously existing atoms to be massless, they so won't move.
@@ -314,8 +314,62 @@ class PDBFixer(object):
             
             for a1, a2 in zip(newAtoms, newAtoms2):
                 newPositions2[a2.index] = state.getPositions()[a1.index]
-            self.processedTopology = newTopology2
-            self.processedPositions = newPositions2
+            self.topology = newTopology2
+            self.positions = newPositions2
+    
+    def _createForceField(self, newTopology):
+        forcefield = app.ForceField(os.path.join(os.path.dirname(__file__), 'soft.xml'))
+        
+        # The Topology may contain residues for which the ForceField does not have a template.
+        # If so, we need to create new templates for them.
+        
+        atomTypes = {}
+        bondedToAtom = []
+        for atom in newTopology.atoms():
+            bondedToAtom.append(set())
+        for atom1, atom2 in newTopology.bonds():
+            bondedToAtom[atom1.index].add(atom2.index)
+            bondedToAtom[atom2.index].add(atom1.index)
+        for residue in newTopology.residues():
+            
+            # Make sure the ForceField has a template for this residue.
+            
+            signature = app.forcefield._createResidueSignature([atom.element for atom in residue.atoms()])
+            if signature in forcefield._templateSignatures:
+                if any(app.forcefield._matchResidue(residue, t, bondedToAtom) is not None for t in forcefield._templateSignatures[signature]):
+                    continue
+            
+            # Create a new template.
+            
+            resName = "extra_"+residue.name
+            template = app.ForceField._TemplateData(resName)
+            forcefield._templates[resName] = template
+            indexInResidue = {}
+            for atom in residue.atoms():
+                element = atom.element
+                typeName = 'extra_'+element.symbol
+                if element not in atomTypes:
+                    atomTypes[element] = (typeName, 0.0, element)
+                    forcefield._atomTypes[typeName] = atomTypes[element]
+                indexInResidue[atom.index] = len(template.atoms)
+                template.atoms.append(app.ForceField._TemplateAtomData(atom.name, typeName, element))
+            for atom in residue.atoms():
+                for bondedTo in bondedToAtom[atom.index]:
+                    if bondedTo in indexInResidue:
+                        b = (indexInResidue[atom.index], indexInResidue[bondedTo])
+                        if b[0] < b[1]:
+                            template.bonds.append(b)
+                            template.atoms[b[0]].bondedTo.append(b[1])
+                            template.atoms[b[1]].bondedTo.append(b[0])
+                    else:
+                        b = indexInResidue[atom.index]
+                        template.externalBonds.append(b)
+                        template.atoms[b].externalBonds += 1
+            if signature in forcefield._templateSignatures:
+                forcefield._templateSignatures[signature].append(template)
+            else:
+                forcefield._templateSignatures[signature] = [template]
+        return forcefield
 
 
 if __name__=='__main__':

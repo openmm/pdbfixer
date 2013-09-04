@@ -13,6 +13,7 @@ def startPageCallback(parameters, handler):
 
 def convertResiduesPageCallback(parameters, handler):
     global nonstandard
+    nonstandard = [residue for i, residue in enumerate(nonstandard) if 'convert'+str(i) in parameters]
     fixer.replaceNonstandardResidues(nonstandard)
     nonstandard = []
     displayMissingAtomsPage()
@@ -24,7 +25,7 @@ def missingAtomsPageCallback(parameters, handler):
 def downloadPageCallback(parameters, handler):
     if 'download' in parameters:
         output = StringIO()
-        app.PDBFile.writeFile(fixer.processedTopology, fixer.processedPositions, output)
+        app.PDBFile.writeFile(fixer.topology, fixer.positions, output)
         handler.sendDownload(output.getvalue(), 'output.pdb')
     else:
         displayStartPage()
@@ -54,16 +55,20 @@ def displayConvertResiduesPage():
     if len(nonstandard) == 0:
         displayMissingAtomsPage()
         return
+    indexInChain = {}
+    for chain in fixer.topology.chains():
+        for i, residue in enumerate(chain.residues()):
+            indexInChain[residue] = i+1
     table = ""
     for i, residue in enumerate(nonstandard):
-        table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, residue.index+1, substitutions[residue.name], i)
+        table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], substitutions[residue.name], i)
     uiserver.setContent("""
 <html>
 <head><title>PDB Fixer</title></head>
 <body>
 This PDB file contains non-standard residues.  Do you want to convert them to the corresponding standard residues?
 <p>
-<form method="get" action="/">
+<form method="post" action="/">
 <table border="1">
     <tr><th>Chain</th><th>Residue</th><th>Convert To</th><th>Convert?</th></tr>
 %s
@@ -85,6 +90,10 @@ def displayMissingAtomsPage():
     if len(allResidues) == 0:
         displayDownloadPage()
         return
+    indexInChain = {}
+    for chain in fixer.topology.chains():
+        for i, residue in enumerate(chain.residues()):
+            indexInChain[residue] = i+1
     table = ""
     for residue in allResidues:
         atoms = []
@@ -92,7 +101,7 @@ def displayMissingAtomsPage():
             atoms.extend(atom.name for atom in missingAtoms[residue])
         if residue in missingTerminals:
             atoms.extend(atom for atom in missingTerminals[residue])
-        table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, residue.index+1, ', '.join(atoms))
+        table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], ', '.join(atoms))
     uiserver.setContent("""
 <html>
 <head><title>PDB Fixer</title></head>
