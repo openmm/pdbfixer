@@ -69,7 +69,7 @@ def _overlayPoints(points1, points2):
     if len(points1) == 0:
         return (Vec3(0, 0, 0), np.identity(3), Vec3(0, 0, 0))
     if len(points1) == 1:
-        return (points1[0], np.identity(3), -points2[0])
+        return (points1[0], np.identity(3), -1*points2[0])
     
     # Compute centroids.
     
@@ -98,6 +98,7 @@ class PDBFixer(object):
         self.topology = self.pdb.topology
         self.positions = self.pdb.positions
         self.centroid = unit.sum(self.positions)/len(self.positions)
+        self._structureChains = list(self.structure.iter_chains())
         
         # Load the templates.
         
@@ -126,8 +127,8 @@ class PDBFixer(object):
                 
                 # Insert missing residues here.
                 
-                insertHere = [r[2] for r in self.missingResidues if r[0] == chain.index and r[1] == indexInChain]
-                if len(insertHere) > 0:
+                if (chain.index, indexInChain) in self.missingResidues:
+                    insertHere = self.missingResidues[(chain.index, indexInChain)]
                     endPosition = self._computeResidueCenter(residue)
                     if indexInChain > 0:
                         startPosition = self._computeResidueCenter(chainResidues[indexInChain-1])
@@ -180,8 +181,8 @@ class PDBFixer(object):
 
                 # If this is the end of the chain, add any missing residues that come after it.
                 
-                if residue == chainResidues[-1]:
-                    insertHere = [r[2] for r in self.missingResidues if r[0] == chain.index and r[1] > indexInChain]
+                if residue == chainResidues[-1] and (chain.index, indexInChain+1) in self.missingResidues:
+                    insertHere = self.missingResidues[(chain.index, indexInChain+1)]
                     if len(insertHere) > 0:
                         startPosition = self._computeResidueCenter(residue)
                         outward = startPosition-self.centroid
@@ -241,6 +242,14 @@ class PDBFixer(object):
                 templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
                 newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
     
+    def removeChains(self, chainIndices):
+        modeller = app.Modeller(self.topology, self.positions)
+        allChains = list(self.topology.chains())
+        modeller.delete(allChains[i] for i in chainIndices)
+        self.topology = modeller.topology
+        self.positions = modeller.positions
+        self._structureChains = [self._structureChains[i] for i in range(len(self._structureChains)) if i not in chainIndices]
+    
     def findNonstandardResidues(self):
         self.nonstandardResidues = [r for r in self.topology.residues() if r.name in substitutions]
     
@@ -266,7 +275,7 @@ class PDBFixer(object):
             self.positions = modeller.positions
     
     def findMissingResidues(self):
-        chains = [c for c in self.structure.iter_chains() if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
+        chains = [c for c in self._structureChains if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
         chainWithGaps = {}
         
         # Find the sequence of each chain, with gaps for missing residues.
@@ -299,8 +308,8 @@ class PDBFixer(object):
         
         # Now build the list of residues to add.
         
-        self.missingResidues = []
-        for structChain, topChain in zip(self.structure.iter_chains(), self.pdb.topology.chains()):
+        self.missingResidues = {}
+        for structChain, topChain in zip(self._structureChains, self.pdb.topology.chains()):
             if structChain in chainSequence:
                 offset = chainOffset[structChain]
                 sequence = chainSequence[structChain].residues
@@ -308,7 +317,10 @@ class PDBFixer(object):
                 index = 0
                 for i in range(len(sequence)):
                     if i < offset or i >= len(gappedSequence)+offset or gappedSequence[i-offset] is None:
-                        self.missingResidues.append((topChain.index, index, sequence[i]))
+                        key = (topChain.index, index)
+                        if key not in self.missingResidues:
+                            self.missingResidues[key] = []
+                        self.missingResidues[key].append(sequence[i])
                     else:
                         index += 1
     
@@ -337,7 +349,7 @@ class PDBFixer(object):
                     # Add missing terminal atoms.
                     
                     terminals = []
-                    if residue == chainResidues[-1] and not any(r[0] == chain.index and r[1] >= len(chainResidues) for r in self.missingResidues):
+                    if residue == chainResidues[-1] and (chain.index, len(chainResidues)) not in self.missingResidues:
                         templateNames = set(atom.name for atom in template.topology.atoms())
                         if 'OXT' not in atomNames and all(name in templateNames for name in ['C', 'O', 'CA']):
                             terminals.append('OXT')
