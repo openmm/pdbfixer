@@ -1,4 +1,5 @@
 import simtk.openmm.app as app
+from simtk.openmm.app.internal.pdbstructure import PdbStructure
 from pdbfixer import PDBFixer, substitutions
 import uiserver
 import webbrowser
@@ -7,19 +8,17 @@ from cStringIO import StringIO
 def startPageCallback(parameters, handler):
     if 'pdbfile' in parameters:
         global fixer
-        pdb = app.PDBFile(parameters['pdbfile'].value.splitlines())
+        pdb = PdbStructure(parameters['pdbfile'].value.splitlines())
         fixer = PDBFixer(pdb)
         displayConvertResiduesPage()
 
 def convertResiduesPageCallback(parameters, handler):
-    global nonstandard
-    nonstandard = [residue for i, residue in enumerate(nonstandard) if 'convert'+str(i) in parameters]
-    fixer.replaceNonstandardResidues(nonstandard)
-    nonstandard = []
+    fixer.nonstandardResidues = [residue for i, residue in enumerate(fixer.nonstandardResidues) if 'convert'+str(i) in parameters]
+    fixer.replaceNonstandardResidues()
     displayMissingAtomsPage()
 
 def missingAtomsPageCallback(parameters, handler):
-    fixer.addMissingAtoms(missingAtoms, missingTerminals)
+    fixer.addMissingAtoms()
     displayDownloadPage()
 
 def downloadPageCallback(parameters, handler):
@@ -50,9 +49,9 @@ PDB File: <input type="file" name="pdbfile"/>
 
 def displayConvertResiduesPage():
     uiserver.setCallback(convertResiduesPageCallback)
-    global nonstandard
-    nonstandard = fixer.findNonstandardResidues()
-    if len(nonstandard) == 0:
+    fixer.findMissingResidues()
+    fixer.findNonstandardResidues()
+    if len(fixer.nonstandardResidues) == 0:
         displayMissingAtomsPage()
         return
     indexInChain = {}
@@ -60,7 +59,7 @@ def displayConvertResiduesPage():
         for i, residue in enumerate(chain.residues()):
             indexInChain[residue] = i+1
     table = ""
-    for i, residue in enumerate(nonstandard):
+    for i, residue in enumerate(fixer.nonstandardResidues):
         table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], substitutions[residue.name], i)
     uiserver.setContent("""
 <html>
@@ -82,10 +81,8 @@ This PDB file contains non-standard residues.  Do you want to convert them to th
 
 def displayMissingAtomsPage():
     uiserver.setCallback(missingAtomsPageCallback)
-    global missingAtoms
-    global missingTerminals
-    missingAtoms, missingTerminals = fixer.findMissingAtoms()
-    allResidues = list(set(missingAtoms.iterkeys()).union(missingTerminals.iterkeys()))
+    fixer.findMissingAtoms()
+    allResidues = list(set(fixer.missingAtoms.iterkeys()).union(fixer.missingTerminals.iterkeys()))
     allResidues.sort(key=lambda x: x.index)
     if len(allResidues) == 0:
         displayDownloadPage()
@@ -97,10 +94,10 @@ def displayMissingAtomsPage():
     table = ""
     for residue in allResidues:
         atoms = []
-        if residue in missingAtoms:
-            atoms.extend(atom.name for atom in missingAtoms[residue])
-        if residue in missingTerminals:
-            atoms.extend(atom for atom in missingTerminals[residue])
+        if residue in fixer.missingAtoms:
+            atoms.extend(atom.name for atom in fixer.missingAtoms[residue])
+        if residue in fixer.missingTerminals:
+            atoms.extend(atom for atom in fixer.missingTerminals[residue])
         table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], ', '.join(atoms))
     uiserver.setContent("""
 <html>

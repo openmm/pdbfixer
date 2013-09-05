@@ -35,6 +35,7 @@ import ui
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
+from simtk.openmm.app.internal.pdbstructure import PdbStructure
 from simtk.openmm.app.element import hydrogen, oxygen
 import numpy as np
 import numpy.linalg as lin
@@ -91,10 +92,12 @@ def _overlayPoints(points1, points2):
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
 class PDBFixer(object):
-    def __init__(self, pdb):
-        self.pdb = pdb
-        self.topology = pdb.topology
-        self.positions = pdb.positions
+    def __init__(self, structure):
+        self.structure = structure
+        self.pdb = app.PDBFile(structure)
+        self.topology = self.pdb.topology
+        self.positions = self.pdb.positions
+        self.centroid = unit.sum(self.positions)/len(self.positions)
         
         # Load the templates.
         
@@ -105,7 +108,7 @@ class PDBFixer(object):
             name = templatePdb.topology.residues().next().name
             self.templates[name] = templatePdb
         
-    def _addAtomsToTopology(self, missingAtoms, missingTerminals, heavyAtomsOnly, omitUnknownMolecules):
+    def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
         """Create a new Topology in which missing atoms have been added."""
         
         newTopology = app.Topology()
@@ -117,18 +120,34 @@ class PDBFixer(object):
         for chain in self.topology.chains():
             if omitUnknownMolecules and not any(residue.name in self.templates for residue in chain.residues()):
                 continue
+            chainResidues = list(chain.residues())
             newChain = newTopology.addChain()
-            for residue in chain.residues():
+            for indexInChain, residue in enumerate(chain.residues()):
+                
+                # Insert missing residues here.
+                
+                insertHere = [r[2] for r in self.missingResidues if r[0] == chain.index and r[1] == indexInChain]
+                if len(insertHere) > 0:
+                    endPosition = self._computeResidueCenter(residue)
+                    if indexInChain > 0:
+                        startPosition = self._computeResidueCenter(chainResidues[indexInChain-1])
+                    else:
+                        outward = endPosition-self.centroid
+                        norm = unit.norm(outward)
+                        if norm > 0*unit.nanometer:
+                            outward *= len(insertHere)*0.5*unit.nanometer/norm
+                        startPosition = endPosition+outward
+                    self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, residue, newAtoms, newPositions)
+                
+                # Create the new residue and add existing heavy atoms.
+                                
                 newResidue = newTopology.addResidue(residue.name, newChain)
-                
-                # Add the existing heavy atoms.
-                
                 for atom in residue.atoms():
                     if not heavyAtomsOnly or (atom.element is not None and atom.element != hydrogen):
                         newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
                         existingAtomMap[atom] = newAtom
                         newPositions.append(self.positions[atom.index])
-                if residue in missingAtoms:
+                if residue in self.missingAtoms:
                     
                     # Find corresponding atoms in the residue and the template.
                     
@@ -148,18 +167,37 @@ class PDBFixer(object):
                     # Add the missing atoms.
                     
                     addedAtomMap[residue] = {}
-                    for atom in missingAtoms[residue]:
+                    for atom in self.missingAtoms[residue]:
                         newAtom = newTopology.addAtom(atom.name, atom.element, newResidue)
                         newAtoms.append(newAtom)
                         addedAtomMap[residue][atom] = newAtom
                         templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
                         newPositions.append((mm.Vec3(*np.dot(rotate, templatePosition+translate2))+translate1)*unit.nanometer)
+                if residue in self.missingTerminals:
+                    terminalsToAdd = self.missingTerminals[residue]
+                else:
+                    terminalsToAdd = None
+
+                # If this is the end of the chain, add any missing residues that come after it.
+                
+                if residue == chainResidues[-1]:
+                    insertHere = [r[2] for r in self.missingResidues if r[0] == chain.index and r[1] > indexInChain]
+                    if len(insertHere) > 0:
+                        startPosition = self._computeResidueCenter(residue)
+                        outward = startPosition-self.centroid
+                        norm = unit.norm(outward)
+                        if norm > 0*unit.nanometer:
+                            outward *= len(insertHere)*0.5*unit.nanometer/norm
+                        endPosition = startPosition+outward
+                        self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, residue, newAtoms, newPositions)
+                        newResidue = list(newChain.residues())[-1]
+                        terminalsToAdd = ['OXT']
                 
                 # If a terminal OXT is missing, add it.
                 
-                if residue in missingTerminals:
+                if terminalsToAdd is not None:
                     atomPositions = dict((atom.name, newPositions[atom.index].value_in_unit(unit.nanometer)) for atom in newResidue.atoms())
-                    if 'OXT' in missingTerminals[residue]:
+                    if 'OXT' in terminalsToAdd:
                         newAtom = newTopology.addAtom('OXT', oxygen, newResidue)
                         newAtoms.append(newAtom)
                         addedOXT.append(newAtom)
@@ -168,48 +206,51 @@ class PDBFixer(object):
                         d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
                         v = d_ca_o - d_ca_c*unit.dot(d_ca_c, d_ca_o)
                         newPositions.append((atomPositions['O']+2*v)*unit.nanometer)
-        
-        # Add bonds from the original Topology.
-        
-        for atom1, atom2 in self.topology.bonds():
-            if atom1 in existingAtomMap and atom2 in existingAtomMap:
-                newTopology.addBond(existingAtomMap[atom1], existingAtomMap[atom2])
-        
-        # Add bonds that connect to new atoms.
-        
-        for residue in missingAtoms:
-            template = self.templates[residue.name]
-            atomsByName = dict((atom.name, atom) for atom in residue.atoms())
-            addedAtoms = addedAtomMap[residue]
-            for atom1, atom2 in template.topology.bonds():
-                if atom1 in addedAtoms or atom2 in addedAtoms:
-                    if atom1 in addedAtoms:
-                        bondAtom1 = addedAtoms[atom1]
-                    else:
-                        bondAtom1 = existingAtomMap[atomsByName[atom1.name]]
-                    if atom2 in addedAtoms:
-                        bondAtom2 = addedAtoms[atom2]
-                    else:
-                        bondAtom2 = existingAtomMap[atomsByName[atom2.name]]
-                    newTopology.addBond(bondAtom1, bondAtom2)
-        for atom1 in addedOXT:
-            atom2 = [atom for atom in atom1.residue.atoms() if atom.name == 'C'][0]
-            newTopology.addBond(atom1, atom2)
+        newTopology.createStandardBonds()
+        newTopology.createDisulfideBonds(newPositions)
         
         # Return the results.
         
         return (newTopology, newPositions, newAtoms, existingAtomMap)
     
-    def findNonstandardResidues(self):
-        return [r for r in self.topology.residues() if r.name in substitutions]
+    def _computeResidueCenter(self, residue):
+        return unit.sum([self.pdb.positions[atom.index] for atom in residue.atoms()])/len(list(residue.atoms()))
     
-    def replaceNonstandardResidues(self, replaceResidues):
-        if len(replaceResidues) > 0:
+    def _addMissingResiduesToChain(self, chain, residueNames, startPosition, endPosition, orientTo, newAtoms, newPositions):
+        orientToPositions = dict((atom.name, self.positions[atom.index]) for atom in orientTo.atoms())
+        for i, residueName in enumerate(residueNames):
+            template = self.templates[residueName]
+
+            # Find a translation that best matches the adjacent residue.
+        
+            points1 = []
+            points2 = []
+            for atom in template.topology.atoms():
+                if atom.name in orientToPositions:
+                    points1.append(orientToPositions[atom.name].value_in_unit(unit.nanometer))
+                    points2.append(template.positions[atom.index].value_in_unit(unit.nanometer))
+            (translate2, rotate, translate1) = _overlayPoints(points1, points2)
+            
+            # Create the new residue.
+            
+            newResidue = chain.topology.addResidue(residueName, chain)
+            translate = startPosition+(endPosition-startPosition)*(i+1.0)/(len(residueNames)+1.0)
+            for atom in template.topology.atoms():
+                newAtom = chain.topology.addAtom(atom.name, atom.element, newResidue)
+                newAtoms.append(newAtom)
+                templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
+                newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
+    
+    def findNonstandardResidues(self):
+        self.nonstandardResidues = [r for r in self.topology.residues() if r.name in substitutions]
+    
+    def replaceNonstandardResidues(self):
+        if len(self.nonstandardResidues) > 0:
             deleteAtoms = []
 
             # Find atoms that should be deleted.
             
-            for residue in replaceResidues:
+            for residue in self.nonstandardResidues:
                 residue.name = substitutions[residue.name]
                 template = self.templates[residue.name]
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
@@ -223,6 +264,53 @@ class PDBFixer(object):
             modeller.delete(deleteAtoms)
             self.topology = modeller.topology
             self.positions = modeller.positions
+    
+    def findMissingResidues(self):
+        chains = [c for c in self.structure.iter_chains() if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
+        chainWithGaps = {}
+        
+        # Find the sequence of each chain, with gaps for missing residues.
+        
+        for chain in chains:
+            minResidue = min(r.number for r in chain.iter_residues())
+            maxResidue = max(r.number for r in chain.iter_residues())
+            residues = [None]*(maxResidue-minResidue+1)
+            for r in chain.iter_residues():
+                residues[r.number-minResidue] = r.get_name()
+            chainWithGaps[chain] = residues
+        
+        # Try to find the chain that matches each sequence.
+        
+        chainSequence = {}
+        chainOffset = {}
+        for sequence in self.structure.sequences:
+            for chain in chains:
+                if chain.chain_id != sequence.chain_id:
+                    continue
+                if chain in chainSequence:
+                    continue
+                for offset in range(len(sequence.residues)-len(chainWithGaps[chain])+1):
+                    if all(a == b or b == None for a,b in zip(sequence.residues[offset:], chainWithGaps[chain])):
+                        chainSequence[chain] = sequence
+                        chainOffset[chain] = offset
+                        break
+                if chain in chainSequence:
+                    break
+        
+        # Now build the list of residues to add.
+        
+        self.missingResidues = []
+        for structChain, topChain in zip(self.structure.iter_chains(), self.pdb.topology.chains()):
+            if structChain in chainSequence:
+                offset = chainOffset[structChain]
+                sequence = chainSequence[structChain].residues
+                gappedSequence = chainWithGaps[structChain]
+                index = 0
+                for i in range(len(sequence)):
+                    if i < offset or i >= len(gappedSequence)+offset or gappedSequence[i-offset] is None:
+                        self.missingResidues.append((topChain.index, index, sequence[i]))
+                    else:
+                        index += 1
     
     def findMissingAtoms(self):
         missingAtoms = {}
@@ -249,18 +337,19 @@ class PDBFixer(object):
                     # Add missing terminal atoms.
                     
                     terminals = []
-                    if residue == chainResidues[-1]:
+                    if residue == chainResidues[-1] and not any(r[0] == chain.index and r[1] >= len(chainResidues) for r in self.missingResidues):
                         templateNames = set(atom.name for atom in template.topology.atoms())
                         if 'OXT' not in atomNames and all(name in templateNames for name in ['C', 'O', 'CA']):
                             terminals.append('OXT')
                         if len(terminals) > 0:
                             missingTerminals[residue] = terminals
-        return (missingAtoms, missingTerminals)
+        self.missingAtoms = missingAtoms
+        self.missingTerminals = missingTerminals
     
-    def addMissingAtoms(self, missingAtoms, missingTerminals):
+    def addMissingAtoms(self):
         # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
         
-        (newTopology, newPositions, newAtoms, existingAtomMap) = self._addAtomsToTopology(missingAtoms, missingTerminals, True, True)
+        (newTopology, newPositions, newAtoms, existingAtomMap) = self._addAtomsToTopology(True, True)
         if len(newAtoms) > 0:
             
             # Create a System for energy minimizing it.
@@ -297,7 +386,7 @@ class PDBFixer(object):
             
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
             
-            (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(missingAtoms, missingTerminals, False, False)
+            (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(False, False)
             
             # Copy over the minimized positions for the new atoms.
             
@@ -365,8 +454,10 @@ if __name__=='__main__':
     if len(sys.argv) < 2:
         ui.launchUI()
     else:
-        fixer = PDBFixer(app.PDBFile(sys.argv[1]))
-        fixer.replaceNonstandardResidues(fixer.findNonstandardResidues())
-        missingAtoms, missingTerminals = fixer.findMissingAtoms()
-        fixer.addMissingAtoms(missingAtoms, missingTerminals)
+        fixer = PDBFixer(PdbStructure(open(sys.argv[1])))
+        fixer.findMissingResidues()
+        fixer.findNonstandardResidues()
+        fixer.replaceNonstandardResidues()
+        fixer.findMissingAtoms()
+        fixer.addMissingAtoms()
         app.PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
