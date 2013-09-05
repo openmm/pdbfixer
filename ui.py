@@ -32,6 +32,12 @@ def convertResiduesPageCallback(parameters, handler):
 
 def missingAtomsPageCallback(parameters, handler):
     fixer.addMissingAtoms()
+    displayAddHydrogensPage()
+
+def addHydrogensPageCallback(parameters, handler):
+    if 'add' in parameters:
+        pH = float(parameters.getfirst('ph'))
+        fixer.addMissingHydrogens(pH)
     displayDownloadPage()
 
 def downloadPageCallback(parameters, handler):
@@ -164,7 +170,7 @@ def displayMissingAtomsPage():
     allResidues = list(set(fixer.missingAtoms.iterkeys()).union(fixer.missingTerminals.iterkeys()))
     allResidues.sort(key=lambda x: x.index)
     if len(allResidues) == 0:
-        displayDownloadPage()
+        displayAddHydrogensPage()
         return
     indexInChain = {}
     for chain in fixer.topology.chains():
@@ -195,6 +201,23 @@ The following residues are missing heavy atoms, which will be added.
 </body>
 <html>
 """ % table)
+
+def displayAddHydrogensPage():
+    uiserver.setCallback(addHydrogensPageCallback)
+    uiserver.setContent("""
+<html>
+<head><title>PDB Fixer</title></head>
+<body>
+Add missing hydrogen atoms?
+<p>
+<form method="post" action="/">
+<input type="checkbox" name="add" checked> Add hydrogens appropriate for pH <input type="text" name="ph" value="7.0" size="5">
+<p>
+<input type="submit" value="Continue"/>
+</form>
+</body>
+<html>
+""")
 
 def displayDownloadPage():
     uiserver.setCallback(downloadPageCallback)

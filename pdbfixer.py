@@ -407,6 +407,12 @@ class PDBFixer(object):
             self.topology = newTopology2
             self.positions = newPositions2
     
+    def addMissingHydrogens(self, pH):
+        modeller = app.Modeller(self.topology, self.positions)
+        modeller.addHydrogens(pH=pH)
+        self.topology = modeller.topology
+        self.positions = modeller.positions
+    
     def _createForceField(self, newTopology):
         forcefield = app.ForceField(os.path.join(os.path.dirname(__file__), 'soft.xml'))
         
@@ -472,4 +478,5 @@ if __name__=='__main__':
         fixer.replaceNonstandardResidues()
         fixer.findMissingAtoms()
         fixer.addMissingAtoms()
+        fixer.addMissingHydrogens(7.0)
         app.PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
