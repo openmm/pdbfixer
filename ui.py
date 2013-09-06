@@ -11,6 +11,13 @@ def loadHtmlFile(name):
     file = os.path.join(htmlPath, name)
     return open(file).read()
 
+def controlsCallback(parameters, handler):
+    if 'newfile' in parameters:
+        displayStartPage()
+    if 'quit' in parameters:
+        handler.sendResponse(loadHtmlFile("quit.html"))
+        uiserver.server.shutdown()
+
 def startPageCallback(parameters, handler):
     if 'pdbfile' in parameters:
         global fixer
@@ -56,7 +63,7 @@ def saveFilePageCallback(parameters, handler):
 
 def displayStartPage():
     uiserver.setCallback(startPageCallback)
-    uiserver.setContent(loadHtmlFile("start.html"))
+    uiserver.setContent(header+loadHtmlFile("start.html"))
 
 def displayDeleteChainsPage():
     uiserver.setCallback(deleteChainsPageCallback)
@@ -79,7 +86,7 @@ def displayDeleteChainsPage():
         else:
             content = ', '.join(set(residues))
         table += '    <tr><td>%d</td><td>%d</td><td>%s</td><td><input type="checkbox" name="include%d" checked></td></tr>\n' % (chain.index+1, len(residues), content, i)
-    uiserver.setContent(loadHtmlFile("removeChains.html") % (numChains, table))
+    uiserver.setContent(header+loadHtmlFile("removeChains.html") % (numChains, table))
 
 def displayAddResiduesPage():
     uiserver.setCallback(addResiduesPageCallback)
@@ -91,7 +98,7 @@ def displayAddResiduesPage():
     for i, key in enumerate(sorted(fixer.missingResidues)):
         residues = fixer.missingResidues[key]
         table += '    <tr><td>%d</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (key[0]+1, key[1]+1, key[1]+len(residues), ', '.join(residues), i)
-    uiserver.setContent(loadHtmlFile("addResidues.html") % table)
+    uiserver.setContent(header+loadHtmlFile("addResidues.html") % table)
 
 def displayConvertResiduesPage():
     uiserver.setCallback(convertResiduesPageCallback)
@@ -106,7 +113,7 @@ def displayConvertResiduesPage():
     table = ""
     for i, residue in enumerate(fixer.nonstandardResidues):
         table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], substitutions[residue.name], i)
-    uiserver.setContent(loadHtmlFile("convertResidues.html") % table)
+    uiserver.setContent(header+loadHtmlFile("convertResidues.html") % table)
 
 def displayMissingAtomsPage():
     uiserver.setCallback(missingAtomsPageCallback)
@@ -128,17 +135,20 @@ def displayMissingAtomsPage():
         if residue in fixer.missingTerminals:
             atoms.extend(atom for atom in fixer.missingTerminals[residue])
         table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], ', '.join(atoms))
-    uiserver.setContent(loadHtmlFile("addHeavyAtoms.html")% table)
+    uiserver.setContent(header+loadHtmlFile("addHeavyAtoms.html")% table)
 
 def displayAddHydrogensPage():
     uiserver.setCallback(addHydrogensPageCallback)
-    uiserver.setContent(loadHtmlFile("addHydrogens.html"))
+    uiserver.setContent(header+loadHtmlFile("addHydrogens.html"))
 
 def displaySaveFilePage():
     uiserver.setCallback(saveFilePageCallback)
-    uiserver.setContent(loadHtmlFile("saveFile.html"))
+    uiserver.setContent(header+loadHtmlFile("saveFile.html"))
 
 def launchUI():
+    global header
+    header = loadHtmlFile("header.html")
     uiserver.beginServing()
+    uiserver.setCallback(controlsCallback, "/controls")
     displayStartPage()
     webbrowser.open('http://localhost:'+str(uiserver.server.server_address[1]))

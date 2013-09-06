@@ -1,0 +1,36 @@
+<html>
+<head>
+<title>PDBFixer</title>
+<script>
+function setCurrentStep(step) {
+    for (var i = 1; i < step; i++)
+        document.getElementById("step"+i).style.color="black"
+    document.getElementById("step"+step).style.color="red"
+    for (var i = step+1; i < 8; i++)
+        document.getElementById("step"+i).style.color="gray"
+    if (step == 1)
+        document.getElementById("newfile").disabled=true
+}
+function setCheckboxes(selected) {
+    checkboxes = document.getElementById("table").getElementsByTagName("input");
+    for (var i = 0; i < checkboxes.length; i++)
+        checkboxes[i].checked = selected
+}
+</script>
+</head>
+<body>
+<div style="background-color:LightSkyBlue;font-style:italic;font-size:xx-large;text-align:center">PDBFixer</div>
+<span style="background-color:LightSkyBlue;font-style:italic;font-size:large;float:right;height:100%;padding:0px 10px">
+    <form method="post" action="/controls">
+        <input type="submit" name="newfile" value="New File" id="newfile"/>
+        <input type="submit" name="quit" value="Quit" style="float:right"/>
+    </form>
+    <p id="step1">Load File</p>
+    <p id="step2">Select Chains</p>
+    <p id="step3">Add Residues</p>
+    <p id="step4">Convert Residues</p>
+    <p id="step5">Add Heavy Atoms</p>
+    <p id="step6">Add Hydrogens</p>
+    <p id="step7">Save File</p>
+</span>
+<p/>
