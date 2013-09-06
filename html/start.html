@@ -1,0 +1,13 @@
+<html>
+<head><title>PDBFixer</title></head>
+<body>
+<h1>Welcome To PDBFixer!</h1>
+Select a PDB file to load.  It will be analyzed for problems.
+<p>
+<form method="post" action="/" enctype="multipart/form-data">
+PDB File: <input type="file" name="pdbfile" onchange="document.getElementById('submit').disabled=false;"/>
+<p>
+<input type="submit" id="submit" value="Analyze File" disabled/>
+</form>
+</body>
+</html>

@@ -3,7 +3,13 @@ from simtk.openmm.app.internal.pdbstructure import PdbStructure
 from pdbfixer import PDBFixer, substitutions
 import uiserver
 import webbrowser
+import os.path
 from cStringIO import StringIO
+
+def loadHtmlFile(name):
+    htmlPath = os.path.join(os.path.dirname(__file__), 'html')
+    file = os.path.join(htmlPath, name)
+    return open(file).read()
 
 def startPageCallback(parameters, handler):
     if 'pdbfile' in parameters:
@@ -38,10 +44,10 @@ def addHydrogensPageCallback(parameters, handler):
     if 'add' in parameters:
         pH = float(parameters.getfirst('ph'))
         fixer.addMissingHydrogens(pH)
-    displayDownloadPage()
+    displaySaveFilePage()
 
-def downloadPageCallback(parameters, handler):
-    if 'download' in parameters:
+def saveFilePageCallback(parameters, handler):
+    if 'save' in parameters:
         output = StringIO()
         app.PDBFile.writeFile(fixer.topology, fixer.positions, output)
         handler.sendDownload(output.getvalue(), 'output.pdb')
@@ -50,21 +56,7 @@ def downloadPageCallback(parameters, handler):
 
 def displayStartPage():
     uiserver.setCallback(startPageCallback)
-    uiserver.setContent("""
-<html>
-<head><title>PDBFixer</title></head>
-<body>
-<h1>Welcome To PDBFixer!</h1>
-Select a PDB file to load.  It will be analyzed for problems.
-<p>
-<form method="post" action="/" enctype="multipart/form-data">
-PDB File: <input type="file" name="pdbfile"/>
-<p>
-<input type="submit" value="Analyze File"/>
-</form>
-</body>
-</html>
-""")
+    uiserver.setContent(loadHtmlFile("start.html"))
 
 def displayDeleteChainsPage():
     uiserver.setCallback(deleteChainsPageCallback)
@@ -87,23 +79,7 @@ def displayDeleteChainsPage():
         else:
             content = ', '.join(set(residues))
         table += '    <tr><td>%d</td><td>%d</td><td>%s</td><td><input type="checkbox" name="include%d" checked></td></tr>\n' % (chain.index+1, len(residues), content, i)
-    uiserver.setContent("""
-<html>
-<head><title>PDB Fixer</title></head>
-<body>
-This PDB file contains %d chains.  Select which ones to include.
-<p>
-<form method="post" action="/">
-<table border="1">
-    <tr><th>Chain</th><th># Residues</th><th>Content</th><th>Include?</th></tr>
-%s
-</table>
-<p>
-<input type="submit" value="Continue"/>
-</form>
-</body>
-<html>
-""" % (numChains, table))
+    uiserver.setContent(loadHtmlFile("removeChains.html") % (numChains, table))
 
 def displayAddResiduesPage():
     uiserver.setCallback(addResiduesPageCallback)
@@ -115,23 +91,7 @@ def displayAddResiduesPage():
     for i, key in enumerate(sorted(fixer.missingResidues)):
         residues = fixer.missingResidues[key]
         table += '    <tr><td>%d</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (key[0]+1, key[1]+1, key[1]+len(residues), ', '.join(residues), i)
-    uiserver.setContent("""
-<html>
-<head><title>PDB Fixer</title></head>
-<body>
-The SEQRES records in this PDB file include residues that are missing from the atom data section.  Do you want to add the missing residues?
-<p>
-<form method="post" action="/">
-<table border="1">
-    <tr><th>Chain</th><th>Residue Positions</th><th>Sequence</th><th>Add?</th></tr>
-%s
-</table>
-<p>
-<input type="submit" value="Continue"/>
-</form>
-</body>
-<html>
-""" % table)
+    uiserver.setContent(loadHtmlFile("addResidues.html") % table)
 
 def displayConvertResiduesPage():
     uiserver.setCallback(convertResiduesPageCallback)
@@ -146,23 +106,7 @@ def displayConvertResiduesPage():
     table = ""
     for i, residue in enumerate(fixer.nonstandardResidues):
         table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], substitutions[residue.name], i)
-    uiserver.setContent("""
-<html>
-<head><title>PDB Fixer</title></head>
-<body>
-This PDB file contains non-standard residues.  Do you want to convert them to the corresponding standard residues?
-<p>
-<form method="post" action="/">
-<table border="1">
-    <tr><th>Chain</th><th>Residue</th><th>Convert To</th><th>Convert?</th></tr>
-%s
-</table>
-<p>
-<input type="submit" value="Continue"/>
-</form>
-</body>
-<html>
-""" % table)
+    uiserver.setContent(loadHtmlFile("convertResidues.html") % table)
 
 def displayMissingAtomsPage():
     uiserver.setCallback(missingAtomsPageCallback)
@@ -184,58 +128,17 @@ def displayMissingAtomsPage():
         if residue in fixer.missingTerminals:
             atoms.extend(atom for atom in fixer.missingTerminals[residue])
         table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], ', '.join(atoms))
-    uiserver.setContent("""
-<html>
-<head><title>PDB Fixer</title></head>
-<body>
-The following residues are missing heavy atoms, which will be added.
-<p>
-<form method="post" action="/">
-<table border="1">
-    <tr><th>Chain</th><th>Residue</th><th>Missing Atoms</th></tr>
-%s
-</table>
-<p>
-<input type="submit" value="Continue"/>
-</form>
-</body>
-<html>
-""" % table)
+    uiserver.setContent(loadHtmlFile("addHeavyAtoms.html")% table)
 
 def displayAddHydrogensPage():
     uiserver.setCallback(addHydrogensPageCallback)
-    uiserver.setContent("""
-<html>
-<head><title>PDB Fixer</title></head>
-<body>
-Add missing hydrogen atoms?
-<p>
-<form method="post" action="/">
-<input type="checkbox" name="add" checked> Add hydrogens appropriate for pH <input type="text" name="ph" value="7.0" size="5">
-<p>
-<input type="submit" value="Continue"/>
-</form>
-</body>
-<html>
-""")
+    uiserver.setContent(loadHtmlFile("addHydrogens.html"))
 
-def displayDownloadPage():
-    uiserver.setCallback(downloadPageCallback)
-    uiserver.setContent("""
-<html>
-<head><title>PDB Fixer</title></head>
-<body>
-The fixed PDB file is ready to download.
-<p>
-<form method="post" action="/">
-<input type="submit" name="download" value="Download"/>
-<input type="submit" name="newfile" value="Process Another File"/>
-</form>
-</body>
-<html>
-""")
+def displaySaveFilePage():
+    uiserver.setCallback(saveFilePageCallback)
+    uiserver.setContent(loadHtmlFile("saveFile.html"))
 
 def launchUI():
     uiserver.beginServing()
     displayStartPage()
-    webbrowser.open('http://'+uiserver.serverAddress)
+    webbrowser.open('http://localhost:'+str(uiserver.server.server_address[1]))

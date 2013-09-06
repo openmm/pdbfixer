@@ -1,0 +1,24 @@
+<html>
+<head><title>PDB Fixer</title>
+<script>
+function validateForm() {
+    if (document.getElementById("addCheckbox").checked) {
+        var ph = document.getElementById("phfield").value;
+        if (ph > 0 && ph < 14)
+            return true;
+        alert("pH must be a number between 0 and 14.")
+        return false;
+    }
+}
+</script>
+</head>
+<body>
+Add missing hydrogen atoms?
+<p>
+<form method="post" action="/" onsubmit="return validateForm()">
+<input type="checkbox" id="addCheckbox" name="add" checked> Add hydrogens appropriate for pH <input type="text" id="phfield" name="ph" value="7.0" size="5">
+<p>
+<input type="submit" value="Continue"/>
+</form>
+</body>
+<html>
