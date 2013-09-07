@@ -6,6 +6,10 @@ import webbrowser
 import os.path
 from cStringIO import StringIO
 
+proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR', 'ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'TRP', 'VAL']
+rnaResidues = ['A', 'G', 'C', 'U']
+dnaResidues = ['DA', 'DG', 'DC', 'DT']
+
 def loadHtmlFile(name):
     htmlPath = os.path.join(os.path.dirname(__file__), 'html')
     file = os.path.join(htmlPath, name)
@@ -39,7 +43,9 @@ def addResiduesPageCallback(parameters, handler):
     displayMissingAtomsPage()
 
 def convertResiduesPageCallback(parameters, handler):
-    fixer.nonstandardResidues = [residue for i, residue in enumerate(fixer.nonstandardResidues) if 'convert'+str(i) in parameters]
+    for i in range(len(fixer.nonstandardResidues)):
+        if 'convert'+str(i) in parameters:
+            fixer.nonstandardResidues[i] = (fixer.nonstandardResidues[i][0], parameters.getfirst('residue'+str(i)))
     fixer.replaceNonstandardResidues()
     displayMissingAtomsPage()
 
@@ -72,9 +78,6 @@ def displayDeleteChainsPage():
         displayAddResiduesPage()
         return
     table = ""
-    proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR.pdb ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'TRP', 'VAL']
-    rnaResidues = ['A', 'G', 'C', 'U']
-    dnaResidues = ['DA', 'DG', 'DC', 'DT']
     for i, chain in enumerate(fixer.topology.chains()):
         residues = list(r.name for r in chain.residues())
         if any(r in proteinResidues for r in residues):
@@ -97,7 +100,12 @@ def displayAddResiduesPage():
     table = ""
     for i, key in enumerate(sorted(fixer.missingResidues)):
         residues = fixer.missingResidues[key]
-        table += '    <tr><td>%d</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (key[0]+1, key[1]+1, key[1]+len(residues), ', '.join(residues), i)
+        chain = fixer.structureChains[key[0]]
+        if key[1] < len(chain.residues):
+            offset = chain.residues[key[1]].number-len(residues)-1
+        else:
+            offset = chain.residues[-1].number
+        table += '    <tr><td>%d</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (key[0]+1, offset+1, offset+len(residues), ', '.join(residues), i)
     uiserver.setContent(header+loadHtmlFile("addResidues.html") % table)
 
 def displayConvertResiduesPage():
@@ -107,12 +115,19 @@ def displayConvertResiduesPage():
         displayMissingAtomsPage()
         return
     indexInChain = {}
-    for chain in fixer.topology.chains():
-        for i, residue in enumerate(chain.residues()):
-            indexInChain[residue] = i+1
-    table = ""
-    for i, residue in enumerate(fixer.nonstandardResidues):
-        table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], substitutions[residue.name], i)
+    for structChain, topChain in zip(fixer.structureChains, fixer.topology.chains()):
+        for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
+            indexInChain[topResidue] = structResidue.number
+    table = ''
+    for i in range(len(fixer.nonstandardResidues)):
+        residue, replaceWith = fixer.nonstandardResidues[i]
+        options = ''
+        for res in proteinResidues:
+            selected = ''
+            if res == replaceWith:
+                selected = ' selected'
+            options += '<option value="%s"%s>%s</option>' % (res, selected, res)
+        table += '    <tr><td>%d</td><td>%s %d</td><td><select name="residue%d">%s</select></td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], i, options, i)
     uiserver.setContent(header+loadHtmlFile("convertResidues.html") % table)
 
 def displayMissingAtomsPage():
@@ -124,9 +139,9 @@ def displayMissingAtomsPage():
         displayAddHydrogensPage()
         return
     indexInChain = {}
-    for chain in fixer.topology.chains():
-        for i, residue in enumerate(chain.residues()):
-            indexInChain[residue] = i+1
+    for structChain, topChain in zip(fixer.structureChains, fixer.topology.chains()):
+        for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
+            indexInChain[topResidue] = structResidue.number
     table = ""
     for residue in allResidues:
         atoms = []

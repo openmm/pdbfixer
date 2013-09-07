@@ -98,7 +98,7 @@ class PDBFixer(object):
         self.topology = self.pdb.topology
         self.positions = self.pdb.positions
         self.centroid = unit.sum(self.positions)/len(self.positions)
-        self._structureChains = list(self.structure.iter_chains())
+        self.structureChains = list(self.structure.iter_chains())
         
         # Load the templates.
         
@@ -248,10 +248,10 @@ class PDBFixer(object):
         modeller.delete(allChains[i] for i in chainIndices)
         self.topology = modeller.topology
         self.positions = modeller.positions
-        self._structureChains = [self._structureChains[i] for i in range(len(self._structureChains)) if i not in chainIndices]
+        self.structureChains = [self.structureChains[i] for i in range(len(self.structureChains)) if i not in chainIndices]
     
     def findNonstandardResidues(self):
-        self.nonstandardResidues = [r for r in self.topology.residues() if r.name in substitutions]
+        self.nonstandardResidues = [(r, substitutions[r.name]) for r in self.topology.residues() if r.name in substitutions]
     
     def replaceNonstandardResidues(self):
         if len(self.nonstandardResidues) > 0:
@@ -259,9 +259,9 @@ class PDBFixer(object):
 
             # Find atoms that should be deleted.
             
-            for residue in self.nonstandardResidues:
-                residue.name = substitutions[residue.name]
-                template = self.templates[residue.name]
+            for residue, replaceWith in self.nonstandardResidues:
+                residue.name = replaceWith
+                template = self.templates[replaceWith]
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
                 for atom in residue.atoms():
                     if atom.element in (None, hydrogen) or atom.name not in standardAtoms:
@@ -275,7 +275,7 @@ class PDBFixer(object):
             self.positions = modeller.positions
     
     def findMissingResidues(self):
-        chains = [c for c in self._structureChains if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
+        chains = [c for c in self.structureChains if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
         chainWithGaps = {}
         
         # Find the sequence of each chain, with gaps for missing residues.
@@ -309,7 +309,7 @@ class PDBFixer(object):
         # Now build the list of residues to add.
         
         self.missingResidues = {}
-        for structChain, topChain in zip(self._structureChains, self.pdb.topology.chains()):
+        for structChain, topChain in zip(self.structureChains, self.topology.chains()):
             if structChain in chainSequence:
                 offset = chainOffset[structChain]
                 sequence = chainSequence[structChain].residues
