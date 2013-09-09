@@ -147,10 +147,13 @@ nb = mm.CustomNonbondedForce('1/((r/0.2)^4+1)')
 sys.addForce(nb)
 for i in range(sys.getNumParticles()):
     nb.addParticle([])
+exclusions = set()
 for bond in data.bonds:
-    nb.addExclusion(bond.atom1, bond.atom2)
+    exclusions.add((min(bond.atom1, bond.atom2), max(bond.atom1, bond.atom2)))
 for angle in data.angles:
-    nb.addExclusion(angle[0], angle[2])"""
+    exclusions.add((min(angle[0], angle[2]), max(angle[0], angle[2])))
+for a1, a2 in exclusions:
+    nb.addExclusion(a1, a2)"""
 print ' </Script>'
 
 print '</ForceField>'
