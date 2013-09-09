@@ -320,7 +320,10 @@ class PDBFixer(object):
                         key = (topChain.index, index)
                         if key not in self.missingResidues:
                             self.missingResidues[key] = []
-                        self.missingResidues[key].append(sequence[i])
+                        residueName = sequence[i]
+                        if residueName in substitutions:
+                            residueName = substitutions[sequence[i]]
+                        self.missingResidues[key].append(residueName)
                     else:
                         index += 1
     
