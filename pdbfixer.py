@@ -60,6 +60,9 @@ substitutions = {
     'SEL':'SER', 'SEP':'SER', 'SET':'SER', 'SHC':'CYS', 'SHR':'LYS', 'SMC':'CYS', 'SOC':'CYS', 'STY':'TYR', 'SVA':'SER', 'TIH':'ALA',
     'TPL':'TRP', 'TPO':'THR', 'TPQ':'ALA', 'TRG':'LYS', 'TRO':'TRP', 'TYB':'TYR', 'TYI':'TYR', 'TYQ':'TYR', 'TYS':'TYR', 'TYY':'TYR'
 }
+proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR', 'ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'TRP', 'VAL']
+rnaResidues = ['A', 'G', 'C', 'U']
+dnaResidues = ['DA', 'DG', 'DC', 'DT']
 
 def _overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
@@ -192,7 +195,10 @@ class PDBFixer(object):
                         endPosition = startPosition+outward
                         self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, residue, newAtoms, newPositions)
                         newResidue = list(newChain.residues())[-1]
-                        terminalsToAdd = ['OXT']
+                        if newResidue.name in proteinResidues:
+                            terminalsToAdd = ['OXT']
+                        else:
+                            terminalsToAdd = None
                 
                 # If a terminal OXT is missing, add it.
                 

@@ -1,14 +1,10 @@
 import simtk.openmm.app as app
 from simtk.openmm.app.internal.pdbstructure import PdbStructure
-from pdbfixer import PDBFixer, substitutions
+from pdbfixer import PDBFixer, substitutions, proteinResidues, dnaResidues, rnaResidues
 import uiserver
 import webbrowser
 import os.path
 from cStringIO import StringIO
-
-proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR', 'ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'TRP', 'VAL']
-rnaResidues = ['A', 'G', 'C', 'U']
-dnaResidues = ['DA', 'DG', 'DC', 'DT']
 
 def loadHtmlFile(name):
     htmlPath = os.path.join(os.path.dirname(__file__), 'html')
