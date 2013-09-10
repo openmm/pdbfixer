@@ -143,7 +143,8 @@ print ' </PeriodicTorsionForce>'
 
 print ' <Script>'
 print """import simtk.openmm as mm
-nb = mm.CustomNonbondedForce('1/((r/0.2)^4+1)')
+nb = mm.CustomNonbondedForce('C/((r/0.2)^4+1)')
+nb.addGlobalParameter('C', 1.0)
 sys.addForce(nb)
 for i in range(sys.getNumParticles()):
     nb.addParticle([])

@@ -397,9 +397,25 @@ class PDBFixer(object):
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
             mm.LocalEnergyMinimizer.minimize(context)
-            integrator.step(1000)
-            mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
+            nearest = self._findNearestDistance(context, newTopology, newAtoms)
+            if nearest < 0.15:
+                
+                # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
+                # repulsive interaction to try to improve the result.
+                
+                for i in range(10):
+                    context.setParameter('C', 0.15*(i+1))
+                    integrator.step(1000)
+                    d = self._findNearestDistance(context, newTopology, newAtoms)
+                    if d > nearest:
+                        nearest = d
+                        state = context.getState(getPositions=True)
+                        if nearest >= 0.15:
+                            break
+                context.setState(state)
+                mm.LocalEnergyMinimizer.minimize(context)
+                state = context.getState(getPositions=True)
             
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
             
@@ -471,6 +487,17 @@ class PDBFixer(object):
             else:
                 forcefield._templateSignatures[signature] = [template]
         return forcefield
+    
+    def _findNearestDistance(self, context, topology, newAtoms):
+        positions = context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(unit.nanometer)
+        atomResidue = [atom.residue for atom in topology.atoms()]
+        nearest = sys.float_info.max
+        for atom in newAtoms:
+            p = positions-positions[atom.index]
+            dist = math.sqrt(min(np.dot(p[i], p[i]) for i in range(len(atomResidue)) if atomResidue[i] != atom.residue))
+            if dist < nearest:
+                nearest = dist
+        return nearest
 
 
 if __name__=='__main__':
