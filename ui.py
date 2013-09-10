@@ -136,6 +136,7 @@ def displayMissingAtomsPage():
     allResidues = list(set(fixer.missingAtoms.iterkeys()).union(fixer.missingTerminals.iterkeys()))
     allResidues.sort(key=lambda x: x.index)
     if len(allResidues) == 0:
+        fixer.addMissingAtoms()
         displayAddHydrogensPage()
         return
     indexInChain = {}
