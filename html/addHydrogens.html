@@ -9,9 +9,18 @@ function validateForm() {
     }
 }
 </script>
+<form method="post" action="/" onsubmit="return validateForm()">
+<h1>Delete Heterogens</h1>
+A heterogen is any residue other than a standard amino acid or nucleotide.  Do you want to delete heterogens?
+<p>
+<select name="heterogens">
+    <option value="all" selected>Keep all heterogens</option>
+    <option value="water">Delete heterogens except water</option>
+    <option value="none">Delete all heterogens</option>
+</select>
+<h1>Add Missing Hyrogens</h1>
 Add missing hydrogen atoms?
 <p>
-<form method="post" action="/" onsubmit="return validateForm()">
 <input type="checkbox" id="addCheckbox" name="add" checked> Add hydrogens appropriate for pH <input type="text" id="phfield" name="ph" value="7.0" size="5">
 <p>
 <input type="submit" value="Continue"/>

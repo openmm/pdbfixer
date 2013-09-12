@@ -50,6 +50,11 @@ def missingAtomsPageCallback(parameters, handler):
     displayAddHydrogensPage()
 
 def addHydrogensPageCallback(parameters, handler):
+    heterogens = parameters.getfirst('heterogens')
+    if heterogens == 'none':
+        fixer.removeHeterogens(False)
+    elif heterogens == 'water':
+        fixer.removeHeterogens(True)
     if 'add' in parameters:
         pH = float(parameters.getfirst('ph'))
         fixer.addMissingHydrogens(pH)

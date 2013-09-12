@@ -61,8 +61,8 @@ substitutions = {
     'TPL':'TRP', 'TPO':'THR', 'TPQ':'ALA', 'TRG':'LYS', 'TRO':'TRP', 'TYB':'TYR', 'TYI':'TYR', 'TYQ':'TYR', 'TYS':'TYR', 'TYY':'TYR'
 }
 proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR', 'ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'TRP', 'VAL']
-rnaResidues = ['A', 'G', 'C', 'U']
-dnaResidues = ['DA', 'DG', 'DC', 'DT']
+rnaResidues = ['A', 'G', 'C', 'U', 'I']
+dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
 
 def _overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
@@ -433,6 +433,21 @@ class PDBFixer(object):
                 newPositions2[a2.index] = state.getPositions()[a1.index]
             self.topology = newTopology2
             self.positions = newPositions2
+    
+    def removeHeterogens(self, keepWater):
+        keep = set(proteinResidues).union(dnaResidues).union(rnaResidues)
+        keep.add('N')
+        keep.add('UNK')
+        if keepWater:
+            keep.add('HOH')
+        toDelete = []
+        for residue in self.topology.residues():
+            if residue.name not in keep:
+                toDelete.append(residue)
+        modeller = app.Modeller(self.topology, self.positions)
+        modeller.delete(toDelete)
+        self.topology = modeller.topology
+        self.positions = modeller.positions
     
     def addMissingHydrogens(self, pH):
         modeller = app.Modeller(self.topology, self.positions)
