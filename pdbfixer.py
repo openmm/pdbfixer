@@ -31,7 +31,6 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 __author__ = "Peter Eastman"
 __version__ = "1.0"
 
-import ui
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
@@ -242,7 +241,10 @@ class PDBFixer(object):
             
             newResidue = chain.topology.addResidue(residueName, chain)
             translate = startPosition+(endPosition-startPosition)*(i+1.0)/(len(residueNames)+1.0)
-            for atom in template.topology.atoms():
+            templateAtoms = list(template.topology.atoms())
+            if newResidue == chain.residues().next():
+                templateAtoms = [atom for atom in templateAtoms if atom.name not in ('P', 'OP1', 'OP2')]
+            for atom in templateAtoms:
                 newAtom = chain.topology.addAtom(atom.name, atom.element, newResidue)
                 newAtoms.append(newAtom)
                 templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
@@ -345,11 +347,14 @@ class PDBFixer(object):
                 if residue.name in self.templates:
                     template = self.templates[residue.name]
                     atomNames = set(atom.name for atom in residue.atoms())
+                    templateAtoms = list(template.topology.atoms())
+                    if residue == chainResidues[0] and (chain.index, 0) not in self.missingResidues:
+                        templateAtoms = [atom for atom in templateAtoms if atom.name not in ('P', 'OP1', 'OP2')]
                     
                     # Add atoms from the template that are missing.
                     
                     missing = []
-                    for atom in template.topology.atoms():
+                    for atom in templateAtoms:
                         if atom.name not in atomNames:
                             missing.append(atom)
                     if len(missing) > 0:
@@ -420,7 +425,6 @@ class PDBFixer(object):
                         if nearest >= 0.15:
                             break
                 context.setState(state)
-                mm.LocalEnergyMinimizer.minimize(context)
                 state = context.getState(getPositions=True)
             
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
@@ -508,6 +512,7 @@ class PDBFixer(object):
 
 if __name__=='__main__':
     if len(sys.argv) < 2:
+        import ui
         ui.launchUI()
     else:
         fixer = PDBFixer(PdbStructure(open(sys.argv[1])))
