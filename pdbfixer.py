@@ -215,6 +215,7 @@ class PDBFixer(object):
                         d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
                         v = d_ca_o - d_ca_c*unit.dot(d_ca_c, d_ca_o)
                         newPositions.append((atomPositions['O']+2*v)*unit.nanometer)
+        newTopology.setUnitCellDimensions(self.topology.getUnitCellDimensions())
         newTopology.createStandardBonds()
         newTopology.createDisulfideBonds(newPositions)
         
@@ -272,7 +273,7 @@ class PDBFixer(object):
         for structChain, topChain in zip(self.structureChains, self.topology.chains()):
             for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
                 key = (structChain.chain_id, structResidue.number, structResidue.name)
-                if key in modres:
+                if key in modres and modres[key] in self.templates:
                     nonstandard[topResidue] = modres[key]
         self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
     
