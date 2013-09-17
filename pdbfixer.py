@@ -262,7 +262,19 @@ class PDBFixer(object):
         self.structureChains = [self.structureChains[i] for i in range(len(self.structureChains)) if i not in chainIndices]
     
     def findNonstandardResidues(self):
-        self.nonstandardResidues = [(r, substitutions[r.name]) for r in self.topology.residues() if r.name in substitutions]
+        # First find residues based on our table of standard substitutions.
+        
+        nonstandard = dict((r, substitutions[r.name]) for r in self.topology.residues() if r.name in substitutions)
+        
+        # Now add ones based on MODRES records.
+        
+        modres = dict(((m.chain_id, m.number, m.residue_name), m.standard_name) for m in self.structure.modified_residues)
+        for structChain, topChain in zip(self.structureChains, self.topology.chains()):
+            for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
+                key = (structChain.chain_id, structResidue.number, structResidue.name)
+                if key in modres:
+                    nonstandard[topResidue] = modres[key]
+        self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
     
     def replaceNonstandardResidues(self):
         if len(self.nonstandardResidues) > 0:
