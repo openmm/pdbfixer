@@ -4,6 +4,8 @@ from pdbfixer import PDBFixer, substitutions, proteinResidues, dnaResidues, rnaR
 import uiserver
 import webbrowser
 import os.path
+import urllib2
+import gzip
 from cStringIO import StringIO
 
 def loadHtmlFile(name):
@@ -19,11 +21,23 @@ def controlsCallback(parameters, handler):
         uiserver.server.shutdown()
 
 def startPageCallback(parameters, handler):
-    if 'pdbfile' in parameters:
-        global fixer
-        pdb = PdbStructure(parameters['pdbfile'].value.splitlines())
-        fixer = PDBFixer(pdb)
-        displayDeleteChainsPage()
+    global fixer
+    if 'type' in parameters:
+        if parameters.getfirst('type') == 'local':
+            pdb = PdbStructure(parameters['pdbfile'].value.splitlines())
+            fixer = PDBFixer(pdb)
+            displayDeleteChainsPage()
+        else:
+            id = parameters.getfirst('pdbid')
+            url = "ftp://ftp.wwpdb.org/pub/pdb/data/structures/all/pdb/pdb"+id.lower()+".ent.gz"
+            try:
+                response = urllib2.urlopen(url)
+                content = gzip.GzipFile(fileobj=StringIO(response.read())).read()
+                pdb = PdbStructure(content.splitlines())
+                fixer = PDBFixer(pdb)
+                displayDeleteChainsPage()
+            except:
+                handler.sendResponse(header+"Unable to download the PDB file. This may indicate an invalid PDB identifier, or an error in network connectivity."+loadHtmlFile("error.html"))
 
 def deleteChainsPageCallback(parameters, handler):
     numChains = len(list(fixer.topology.chains()))
