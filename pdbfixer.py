@@ -273,8 +273,12 @@ class PDBFixer(object):
         for structChain, topChain in zip(self.structureChains, self.topology.chains()):
             for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
                 key = (structChain.chain_id, structResidue.number, structResidue.name)
-                if key in modres and modres[key] in self.templates:
-                    nonstandard[topResidue] = modres[key]
+                if key in modres:
+                    replacement = modres[key]
+                    if replacement == 'DU':
+                        replacement = 'DT'
+                    if replacement in self.templates:
+                        nonstandard[topResidue] = replacement
         self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
     
     def replaceNonstandardResidues(self):

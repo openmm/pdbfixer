@@ -134,10 +134,15 @@ def displayConvertResiduesPage():
         for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
             indexInChain[topResidue] = structResidue.number
     table = ''
+    nucleotides = ['DA', 'DC', 'DG', 'DT', 'A', 'C', 'G', 'T']
     for i in range(len(fixer.nonstandardResidues)):
         residue, replaceWith = fixer.nonstandardResidues[i]
+        if replaceWith in proteinResidues:
+            replacements = proteinResidues
+        else:
+            replacements = nucleotides
         options = ''
-        for res in proteinResidues:
+        for res in replacements:
             selected = ''
             if res == replaceWith:
                 selected = ' selected'
