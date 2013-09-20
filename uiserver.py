@@ -34,10 +34,10 @@ class _Handler(BaseHTTPRequestHandler):
         if path in callback:
             callback[path](parameters, self)
     
-    def sendResponse(self, response):
+    def sendResponse(self, response, type="text/html"):
         self.hasSentResponse = True
         self.send_response(200)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", type)
         self.send_header("Content-length", str(len(response)))
         self.end_headers()
         self.wfile.write(response)

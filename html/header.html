@@ -12,13 +12,66 @@ function setCurrentStep(step) {
         document.getElementById("newfile").disabled=true
 }
 function setCheckboxes(selected) {
-    checkboxes = document.getElementById("table").getElementsByTagName("input");
+    checkboxes = document.getElementById("table").getElementsByTagName("input")
     for (var i = 0; i < checkboxes.length; i++)
         checkboxes[i].checked = selected
 }
+function submitWithSpinner() {
+    animateSpinner.animateIndex = 0
+    setTimeout(function() {animateSpinner();document.getElementById('overlay').style.visibility='visible';}, 1500)
+    document.getElementById('mainform').submit()
+}
+function animateSpinner() {
+    for (var i = 0; i < 3; i++) {
+        var bar = document.getElementById("progress"+(i+1))
+        if (i == animateSpinner.animateIndex)
+            bar.style.backgroundColor = "black"
+        else
+            bar.style.backgroundColor = "lightgray"
+    }
+    animateSpinner.animateIndex = (animateSpinner.animateIndex+1)%3
+    setTimeout(function() {animateSpinner()}, 1000)
+}
 </script>
+<style>
+body {font-family:sans-serif}
+#progressParent {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    margin-top: -75px;
+    margin-left: -125px
+}
+#overlay {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    background-color: rgba(255,255,255,0.75);
+    visibility:hidden;
+}
+#progressMessage {
+    width: 100%;
+    position: fixed;
+    top: 40%;
+    margin-top: 90px;
+    text-align: center
+}
+</style>
 </head>
 <body>
+<div id="overlay">
+    <div id="progressParent">
+        <div id="progress1" style="width:50px;height:150px;position:absolute;left:0px"></div>
+        <div id="progress2" style="width:50px;height:150px;position:absolute;left:100px"></div>
+        <div id="progress3" style="width:50px;height:150px;position:absolute;left:200px"></div>
+    </div>
+    <div id="progressMessage">
+        <div style="font-size:xx-large">Processing</div>
+        This may take some time.
+    </div>
+</div>
 <div style="background-color:LightSkyBlue;font-style:italic;font-size:xx-large;text-align:center">PDBFixer</div>
 <span style="background-color:LightSkyBlue;font-style:italic;font-size:large;float:right;height:100%;padding:0px 10px">
     <form method="post" action="/controls">

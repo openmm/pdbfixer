@@ -3,19 +3,19 @@ function enableInputs() {
     if (document.getElementById("localtype").checked) {
         document.getElementById("pdbfile").disabled = false;
         document.getElementById("pdbid").disabled = true;
-        document.getElementById("submit").disabled = (document.getElementById("pdbfile").value == "");
+        document.getElementById("submitButton").disabled = (document.getElementById("pdbfile").value == "");
     }
     else {
         document.getElementById("pdbfile").disabled = true;
         document.getElementById("pdbid").disabled = false;
-        document.getElementById("submit").disabled = (document.getElementById("pdbid").value.length != 4);
+        document.getElementById("submitButton").disabled = (document.getElementById("pdbid").value.length != 4);
     }
 }
 </script>
 <h1>Welcome To PDBFixer!</h1>
 Select a PDB file to load.  It will be analyzed for problems.
 <p>
-<form method="post" action="/" enctype="multipart/form-data">
+<form id="mainform" method="post" action="/" enctype="multipart/form-data">
 <input type="radio" name="type" id="localtype" value="local" onchange="enableInputs()" checked>Load a local file
 <p style="margin-left:50px">
 PDB File: <input type="file" id="pdbfile" name="pdbfile" onchange="enableInputs()"/>
@@ -24,7 +24,7 @@ PDB File: <input type="file" id="pdbfile" name="pdbfile" onchange="enableInputs(
 <p style="margin-left:50px">
 PDB Identifier: <input type="text" id="pdbid" name="pdbid" size="4" onchange="enableInputs()" onkeyup="enableInputs()" oninput="enableInputs()" disabled>
 </p>
-<input type="submit" id="submit" value="Analyze File" disabled/>
+<input type="button" id="submitButton" value="Analyze File" onclick="submitWithSpinner()" disabled/>
 </form>
 <script>
 setCurrentStep(1)

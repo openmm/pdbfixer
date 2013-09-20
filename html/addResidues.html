@@ -1,13 +1,13 @@
 The SEQRES records in this PDB file include residues that are missing from the atom data section.  Do you want to add the missing residues?
 <p>
-<form method="post" action="/">
+<form id="mainform" method="post" action="/">
 <table border="1" id="table">
     <tr><th>Chain</th><th>Residue Positions</th><th>Sequence</th><th>Add?</th></tr>
 %s
 </table>
 <input type="button" value="Select All" onclick="setCheckboxes(true);"/><input type="button" value="Select None" onclick="setCheckboxes(false);"/>
 <p>
-<input type="submit" value="Continue"/>
+<input type="button" value="Continue" onclick="submitWithSpinner()"/>
 </form>
 <script>
 setCurrentStep(3)
