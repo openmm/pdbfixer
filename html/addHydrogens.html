@@ -1,15 +1,30 @@
 <script>
 function validateForm() {
-    if (document.getElementById("addCheckbox").checked) {
-        var ph = document.getElementById("phfield").value;
-        if (ph > 0 && ph < 14)
-            return true;
-        alert("pH must be a number between 0 and 14.")
-        return false;
+    if (document.getElementById("addHydrogensCheckbox").checked) {
+        var ph = document.getElementById("phfield").value
+        if (!(ph > 0 && ph < 14)) {
+            alert("pH must be a number between 0 and 14.")
+            return false
+        }
     }
+    if (document.getElementById("addWaterCheckbox").checked) {
+        var xsize = document.getElementById("boxxfield").value
+        var ysize = document.getElementById("boxyfield").value
+        var zsize = document.getElementById("boxzfield").value
+        var strength = document.getElementById("ionicstrengthfield").value
+        if (!(xsize > 0 && ysize > 0 && zsize > 0)) {
+            alert("Box dimensions must be positive numbers.")
+            return false
+        }
+        if (!(strength >= 0)) {
+            alert("Ionic strength must be a nonnegative number.")
+            return false
+        }
+    }
+    return true
 }
 </script>
-<form id="mainform" method="post" action="/" onsubmit="return validateForm()">
+<form id="mainform" method="post" action="/">
 <h1>Delete Heterogens</h1>
 A heterogen is any residue other than a standard amino acid or nucleotide.  Do you want to delete heterogens?
 <p>
@@ -21,12 +36,31 @@ A heterogen is any residue other than a standard amino acid or nucleotide.  Do y
 <h1>Add Missing Hydrogens</h1>
 Add missing hydrogen atoms?
 <p>
-<input type="checkbox" id="addCheckbox" name="add" checked> Add hydrogens appropriate for pH <input type="text" id="phfield" name="ph" value="7.0" size="5">
+<input type="checkbox" id="addHydrogensCheckbox" name="addhydrogens" onchange="document.getElementById('phfield').disabled=!document.getElementById('addHydrogensCheckbox').checked" checked> Add hydrogens appropriate for pH <input type="text" id="phfield" name="ph" value="7.0" size="5">
+<h1>Add Water</h1>
+Add a water box surrounding the model?
 <p>
-<input type="button" value="Continue" onclick="submitWithSpinner()"/>
+<input type="checkbox" id="addWaterCheckbox" name="addwater" onchange="enableControls(document.getElementById('waterInputs'), document.getElementById('addWaterCheckbox').checked)"> Add water
+<div id="waterInputs" style="margin-left:50px">
+    <table style="text-align:right">
+        <tr><td>Box dimensions (in nm):</td><td><input type="text" id="boxxfield" name="boxx" size="8"></td><td><input type="text" id="boxyfield" name="boxy" size="8"></td><td><input type="text" id="boxzfield" name="boxz" size="8"></td></tr>
+        %s
+    </table>
+    <p>
+    Ions will be added to neutralize the model.  You can optionally add more ions based on a desired bulk ionic strength.
+    <p>
+    <table>
+        <tr><td style="text-align:right">Ionic strength (molar):</td><td><input type="text" id="ionicstrengthfield" name="ionicstrength" size="8" value="0.0"></td></tr>
+        <tr><td style="text-align:right">Positive ion:</td><td><select name="positiveion"><option value="Cs">Cs+</option><option value="K">K+</option><option value="Li">Li+</option><option value="Na" selected>Na+</option><option value="Rb">Rb+</option></select></td></tr>
+        <tr><td style="text-align:right">Negative ion:</td><td><select name="negativeion"><option value="Cl" selected>Cl-</option><option value="Br">Br-</option><option value="F">F-</option><option value="I">I-</option></select></td></tr>
+    </table>
+</div>
+<p>
+<input type="button" value="Continue" onclick="if (validateForm()) submitWithSpinner()"/>
 </form>
 <script>
 setCurrentStep(6)
+enableControls(document.getElementById('waterInputs'), false)
 </script>
 </body>
 <html>

@@ -1,5 +1,6 @@
 import simtk.openmm.app as app
 from simtk.openmm.app.internal.pdbstructure import PdbStructure
+import simtk.unit as unit
 from pdbfixer import PDBFixer, substitutions, proteinResidues, dnaResidues, rnaResidues
 import uiserver
 import webbrowser
@@ -69,9 +70,15 @@ def addHydrogensPageCallback(parameters, handler):
         fixer.removeHeterogens(False)
     elif heterogens == 'water':
         fixer.removeHeterogens(True)
-    if 'add' in parameters:
+    if 'addhydrogens' in parameters:
         pH = float(parameters.getfirst('ph'))
         fixer.addMissingHydrogens(pH)
+    if 'addwater' in parameters:
+        boxSize = (float(parameters.getfirst('boxx')), float(parameters.getfirst('boxy')), float(parameters.getfirst('boxz')))*unit.nanometer
+        ionicStrength = float(parameters.getfirst('ionicstrength'))*unit.molar
+        positiveIon = parameters.getfirst('positiveion')+'+'
+        negativeIon = parameters.getfirst('negativeion')+'-'
+        fixer.addSolvent(boxSize, positiveIon, negativeIon, ionicStrength)
     displaySaveFilePage()
 
 def saveFilePageCallback(parameters, handler):
@@ -171,11 +178,16 @@ def displayMissingAtomsPage():
         if residue in fixer.missingTerminals:
             atoms.extend(atom for atom in fixer.missingTerminals[residue])
         table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], ', '.join(atoms))
-    uiserver.setContent(header+loadHtmlFile("addHeavyAtoms.html")% table)
+    uiserver.setContent(header+loadHtmlFile("addHeavyAtoms.html") % table)
 
 def displayAddHydrogensPage():
     uiserver.setCallback(addHydrogensPageCallback)
-    uiserver.setContent(header+loadHtmlFile("addHydrogens.html"))
+    dimensions = ""
+    if fixer.topology.getUnitCellDimensions() is not None:
+        dimensions = "<tr><td>Crystallographic unit cell:</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>" % fixer.topology.getUnitCellDimensions().value_in_unit(unit.nanometer)
+    sizeRange = tuple(max((pos[i] for pos in fixer.positions))-min((pos[i] for pos in fixer.positions)) for i in range(3))
+    dimensions += "<tr><td>Box containing all atoms:</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>" % tuple(x.value_in_unit(unit.nanometer) for x in sizeRange)
+    uiserver.setContent(header+loadHtmlFile("addHydrogens.html") % dimensions)
 
 def displaySaveFilePage():
     uiserver.setCallback(saveFilePageCallback)

@@ -16,6 +16,14 @@ function setCheckboxes(selected) {
     for (var i = 0; i < checkboxes.length; i++)
         checkboxes[i].checked = selected
 }
+function enableControls(container, enabled) {
+    tags = ["input", "select"]
+    for (var i = 0; i < tags.length; i++) {
+        controls = container.getElementsByTagName(tags[i])
+        for (var j = 0; j < controls.length; j++)
+            controls[j].disabled = !enabled
+    }
+}
 function submitWithSpinner() {
     animateSpinner.animateIndex = 0
     setTimeout(function() {animateSpinner();document.getElementById('overlay').style.visibility='visible';}, 1500)
@@ -83,7 +91,7 @@ body {font-family:sans-serif}
     <p id="step3">Add Residues</p>
     <p id="step4">Convert Residues</p>
     <p id="step5">Add Heavy Atoms</p>
-    <p id="step6">Add Hydrogens</p>
+    <p id="step6">Add Water/Hydrogens</p>
     <p id="step7">Save File</p>
 </span>
 <p/>

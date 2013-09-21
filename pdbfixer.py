@@ -36,6 +36,7 @@ import simtk.openmm.app as app
 import simtk.unit as unit
 from simtk.openmm.app.internal.pdbstructure import PdbStructure
 from simtk.openmm.app.element import hydrogen, oxygen
+from simtk.openmm.app.forcefield import NonbondedGenerator
 import numpy as np
 import numpy.linalg as lin
 import sys
@@ -401,7 +402,7 @@ class PDBFixer(object):
             # Create a System for energy minimizing it.
             
             res = list(newTopology.residues())
-            forcefield = self._createForceField(newTopology)
+            forcefield = self._createForceField(newTopology, False)
             system = forcefield.createSystem(newTopology)
             
             # Set any previously existing atoms to be massless, they so won't move.
@@ -479,8 +480,21 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
     
-    def _createForceField(self, newTopology):
-        forcefield = app.ForceField(os.path.join(os.path.dirname(__file__), 'soft.xml'))
+    def addSolvent(self, boxSize, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
+        modeller = app.Modeller(self.topology, self.positions)
+        forcefield = self._createForceField(self.topology, True)
+        modeller.addSolvent(forcefield, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        self.topology = modeller.topology
+        self.positions = modeller.positions
+    
+    def _createForceField(self, newTopology, water):
+        if water:
+            forcefield = app.ForceField('amber10.xml', 'tip3p.xml')
+            nonbonded = [f for f in forcefield._forces if isinstance(f, NonbondedGenerator)][0]
+            radii = {'H':0.198, 'Li':0.203, 'C':0.340, 'N':0.325, 'O':0.299, 'F':0.312, 'Na':0.333, 'Mg':0.141,
+                     'P':0.374, 'S':0.356, 'Cl':0.347, 'K':0.474, 'Br':0.396, 'Rb':0.527, 'I':0.419, 'Cs':0.605}
+        else:
+            forcefield = app.ForceField(os.path.join(os.path.dirname(__file__), 'soft.xml'))
         
         # The Topology may contain residues for which the ForceField does not have a template.
         # If so, we need to create new templates for them.
@@ -513,6 +527,14 @@ class PDBFixer(object):
                 if element not in atomTypes:
                     atomTypes[element] = (typeName, 0.0, element)
                     forcefield._atomTypes[typeName] = atomTypes[element]
+                    if water:
+                        # Select a reasonable vdW radius for this atom type.
+                        
+                        if element.symbol in radii:
+                            sigma = radii[element.symbol]
+                        else:
+                            sigma = 0.5
+                        nonbonded.typeMap[typeName] = (0.0, sigma, 0.0)
                 indexInResidue[atom.index] = len(template.atoms)
                 template.atoms.append(app.ForceField._TemplateAtomData(atom.name, typeName, element))
             for atom in residue.atoms():
