@@ -96,6 +96,11 @@ def _overlayPoints(points1, points2):
 
 class PDBFixer(object):
     def __init__(self, structure):
+        """Create a new PDBFixer to fix problems in a PDB file.
+        
+        Parameters:
+         - structure (PdbStructure) the starting PDB structure containing problems to be fixed
+        """
         self.structure = structure
         self.pdb = app.PDBFile(structure)
         self.topology = self.pdb.topology
@@ -225,9 +230,11 @@ class PDBFixer(object):
         return (newTopology, newPositions, newAtoms, existingAtomMap)
     
     def _computeResidueCenter(self, residue):
+        """Compute the centroid of a residue."""
         return unit.sum([self.pdb.positions[atom.index] for atom in residue.atoms()])/len(list(residue.atoms()))
     
     def _addMissingResiduesToChain(self, chain, residueNames, startPosition, endPosition, orientTo, newAtoms, newPositions):
+        """Add a series of residues to a chain."""
         orientToPositions = dict((atom.name, self.positions[atom.index]) for atom in orientTo.atoms())
         for i, residueName in enumerate(residueNames):
             template = self.templates[residueName]
@@ -256,6 +263,11 @@ class PDBFixer(object):
                 newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
     
     def removeChains(self, chainIndices):
+        """Remove a set of chains from the structure.
+        
+        Parameters:
+         - chainIndices (list) the indices of the chains to remove.
+        """
         modeller = app.Modeller(self.topology, self.positions)
         allChains = list(self.topology.chains())
         modeller.delete(allChains[i] for i in chainIndices)
@@ -263,47 +275,13 @@ class PDBFixer(object):
         self.positions = modeller.positions
         self.structureChains = [self.structureChains[i] for i in range(len(self.structureChains)) if i not in chainIndices]
     
-    def findNonstandardResidues(self):
-        # First find residues based on our table of standard substitutions.
-        
-        nonstandard = dict((r, substitutions[r.name]) for r in self.topology.residues() if r.name in substitutions)
-        
-        # Now add ones based on MODRES records.
-        
-        modres = dict(((m.chain_id, m.number, m.residue_name), m.standard_name) for m in self.structure.modified_residues)
-        for structChain, topChain in zip(self.structureChains, self.topology.chains()):
-            for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
-                key = (structChain.chain_id, structResidue.number, structResidue.name)
-                if key in modres:
-                    replacement = modres[key]
-                    if replacement == 'DU':
-                        replacement = 'DT'
-                    if replacement in self.templates:
-                        nonstandard[topResidue] = replacement
-        self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
-    
-    def replaceNonstandardResidues(self):
-        if len(self.nonstandardResidues) > 0:
-            deleteAtoms = []
-
-            # Find atoms that should be deleted.
-            
-            for residue, replaceWith in self.nonstandardResidues:
-                residue.name = replaceWith
-                template = self.templates[replaceWith]
-                standardAtoms = set(atom.name for atom in template.topology.atoms())
-                for atom in residue.atoms():
-                    if atom.element in (None, hydrogen) or atom.name not in standardAtoms:
-                        deleteAtoms.append(atom)
-            
-            # Delete them.
-            
-            modeller = app.Modeller(self.topology, self.positions)
-            modeller.delete(deleteAtoms)
-            self.topology = modeller.topology
-            self.positions = modeller.positions
-    
     def findMissingResidues(self):
+        """Find residues that are missing from the structure.
+        
+        The results are stored into the missingResidues field, which is a dict.  Each key is a tuple consisting of
+        the index of a chain, and the residue index within that chain at which new residues should be inserted.
+        The corresponding value is a list of the names of residues to insert there.
+        """
         chains = [c for c in self.structureChains if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
         chainWithGaps = {}
         
@@ -356,7 +334,61 @@ class PDBFixer(object):
                     else:
                         index += 1
     
+    def findNonstandardResidues(self):
+        """Identify non-standard residues found in the structure, and select standard residues to replace them with.
+        
+        The results are stored into the nonstandardResidues field, which is a map of Residue objects to the names
+        of suggested replacement residues.
+        """
+        
+        # First find residues based on our table of standard substitutions.
+        
+        nonstandard = dict((r, substitutions[r.name]) for r in self.topology.residues() if r.name in substitutions)
+        
+        # Now add ones based on MODRES records.
+        
+        modres = dict(((m.chain_id, m.number, m.residue_name), m.standard_name) for m in self.structure.modified_residues)
+        for structChain, topChain in zip(self.structureChains, self.topology.chains()):
+            for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
+                key = (structChain.chain_id, structResidue.number, structResidue.name)
+                if key in modres:
+                    replacement = modres[key]
+                    if replacement == 'DU':
+                        replacement = 'DT'
+                    if replacement in self.templates:
+                        nonstandard[topResidue] = replacement
+        self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
+    
+    def replaceNonstandardResidues(self):
+        """Replace every residue listed in the nonstandardResidues field with the specified standard residue."""
+        if len(self.nonstandardResidues) > 0:
+            deleteAtoms = []
+
+            # Find atoms that should be deleted.
+            
+            for residue, replaceWith in self.nonstandardResidues:
+                residue.name = replaceWith
+                template = self.templates[replaceWith]
+                standardAtoms = set(atom.name for atom in template.topology.atoms())
+                for atom in residue.atoms():
+                    if atom.element in (None, hydrogen) or atom.name not in standardAtoms:
+                        deleteAtoms.append(atom)
+            
+            # Delete them.
+            
+            modeller = app.Modeller(self.topology, self.positions)
+            modeller.delete(deleteAtoms)
+            self.topology = modeller.topology
+            self.positions = modeller.positions
+    
     def findMissingAtoms(self):
+        """Find heavy atoms that are missing from the structure.
+        
+        The results are stored into two field: missingAtoms and missingTerminals.  Each of these is a dict whose keys
+        are Residue objects and whose values are lists of atom names.  missingAtoms contains standard atoms that should
+        be present in any residue of that type.  missingTerminals contains terminal atoms that should be present at the
+        start or end of a chain.
+        """
         missingAtoms = {}
         missingTerminals = {}
         
@@ -394,6 +426,8 @@ class PDBFixer(object):
         self.missingTerminals = missingTerminals
     
     def addMissingAtoms(self):
+        """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields."""
+        
         # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
         
         (newTopology, newPositions, newAtoms, existingAtomMap) = self._addAtomsToTopology(True, True)
@@ -460,6 +494,11 @@ class PDBFixer(object):
             self.positions = newPositions2
     
     def removeHeterogens(self, keepWater):
+        """Remove all heterogens from the structure.
+        
+        Parameters:
+         - keepWater (bool) if True, water molecules will not be removed
+        """
         keep = set(proteinResidues).union(dnaResidues).union(rnaResidues)
         keep.add('N')
         keep.add('UNK')
@@ -475,12 +514,26 @@ class PDBFixer(object):
         self.positions = modeller.positions
     
     def addMissingHydrogens(self, pH):
+        """Add missing hydrogen atoms to the structure.
+        
+        Parameters:
+         - pH (float) the pH based on which to select hydrogens
+        """
         modeller = app.Modeller(self.topology, self.positions)
         modeller.addHydrogens(pH=pH)
         self.topology = modeller.topology
         self.positions = modeller.positions
     
     def addSolvent(self, boxSize, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
+        """Add a solvent box surrounding the structure.
+        
+        Parameters:
+         - boxSize (Vec3) the size of the box to fill with water
+         - positiveIon (string='Na+') the type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'
+         - negativeIon (string='Cl-') the type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'
+         - ionicString (concentration=0*molar) the total concentration of ions (both positive and negative) to add.  This
+           does not include ions that are added to neutralize the system.
+        """
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
         modeller.addSolvent(forcefield, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
@@ -488,6 +541,8 @@ class PDBFixer(object):
         self.positions = modeller.positions
     
     def _createForceField(self, newTopology, water):
+        """Create a force field to use for optimizing the positions of newly added atoms."""
+        
         if water:
             forcefield = app.ForceField('amber10.xml', 'tip3p.xml')
             nonbonded = [f for f in forcefield._forces if isinstance(f, NonbondedGenerator)][0]
@@ -556,6 +611,8 @@ class PDBFixer(object):
         return forcefield
     
     def _findNearestDistance(self, context, topology, newAtoms):
+        """Given a set of newly added atoms, find the closest distance between one of those atoms and another atom."""
+        
         positions = context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(unit.nanometer)
         atomResidue = [atom.residue for atom in topology.atoms()]
         nearest = sys.float_info.max
