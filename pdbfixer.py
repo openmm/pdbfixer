@@ -95,6 +95,8 @@ def _overlayPoints(points1, points2):
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
 class PDBFixer(object):
+    """PDBFixer implements many tools for fixing problems in PDB files."""
+    
     def __init__(self, structure):
         """Create a new PDBFixer to fix problems in a PDB file.
         
@@ -626,14 +628,49 @@ class PDBFixer(object):
 
 if __name__=='__main__':
     if len(sys.argv) < 2:
+        # Display the UI.
+        
         import ui
         ui.launchUI()
     else:
-        fixer = PDBFixer(PdbStructure(open(sys.argv[1])))
-        fixer.findMissingResidues()
-        fixer.findNonstandardResidues()
-        fixer.replaceNonstandardResidues()
+        # Run in command line mode.
+        
+        from optparse import OptionParser
+        parser = OptionParser(usage="Usage: %prog\n       %prog [options] filename\n\nWhen run with no arguments, it launches the user interface.  If any arguments are specified, it runs in command line mode.")
+        parser.add_option('--output', default='output.pdb', dest='output', metavar='FILENAME', help='output pdb file [default: output.pdb]')
+        parser.add_option('--add-atoms', default='all', dest='atoms', choices=('all', 'heavy', 'hydrogen', 'none'), help='which missing atoms to add: all, heavy, hydrogen, or none [default: all]')
+        parser.add_option('--keep-heterogens', default='all', dest='heterogens', choices=('all', 'water', 'none'), metavar='OPTION', help='which heterogens to keep: all, water, or none [default: all]')
+        parser.add_option('--replace-nonstandard', action='store_true', default=False, dest='nonstandard', help='replace nonstandard residues with standard equivalents')
+        parser.add_option('--add-residues', action='store_true', default=False, dest='residues', help='add missing residues')
+        parser.add_option('--water-box', dest='box', type='float', nargs=3, metavar='X Y Z', help='add a water box. The value is the box dimensions in nm [example: --water-box=2.5 2.4 3.0]')
+        parser.add_option('--ph', type='float', default=7.0, dest='ph', help='the pH to use for adding missing hydrogens [default: 7.0]')
+        parser.add_option('--positive-ion', default='Na+', dest='positiveIon', choices=('Cs+', 'K+', 'Li+', 'Na+', 'Rb+'), metavar='ION', help='positive ion to include in the water box: Cs+, K+, Li+, Na+, or Rb+ [default: Na+]')
+        parser.add_option('--negative-ion', default='Cl-', dest='negativeIon', choices=('Cl-', 'Br-', 'F-', 'I-'), metavar='ION', help='positive ion to include in the water box: Cl-, Br-, F-, or I- [default: Cl-]')
+        parser.add_option('--ionic-strength', type='float', default=0.0, dest='ionic', metavar='STRENGTH', help='molar concentration of ions to add to the water box [default: 0.0]')
+        (options, args) = parser.parse_args()
+        if len(args) == 0:
+            parser.error('No filename specified')
+        if len(args) > 1:
+            parser.error('Must specify a single filename')
+        fixer = PDBFixer(PdbStructure(open(args[0])))
+        if options.residues:
+            fixer.findMissingResidues()
+        else:
+            fixer.missingResidues = {}
+        if options.nonstandard:
+            fixer.findNonstandardResidues()
+            fixer.replaceNonstandardResidues()
         fixer.findMissingAtoms()
+        if options.atoms not in ('all', 'heavy'):
+            fixer.missingAtoms = {}
+            fixer.missingTerminals = {}
         fixer.addMissingAtoms()
-        fixer.addMissingHydrogens(7.0)
-        app.PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
+        if options.heterogens == 'none':
+            fixer.removeHeterogens(False)
+        elif options.heterogens == 'water':
+            fixer.removeHeterogens(True)
+        if options.atoms in ('all', 'hydrogen'):
+            fixer.addMissingHydrogens(options.ph)
+        if options.box is not None:
+            fixer.addSolvent(options.box*unit.nanometer, options.positiveIon, options.negativeIon, options.ionic*unit.molar)
+        app.PDBFile.writeFile(fixer.topology, fixer.positions, open(options.output, 'w'))
