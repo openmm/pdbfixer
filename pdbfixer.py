@@ -386,7 +386,7 @@ class PDBFixer(object):
     def findMissingAtoms(self):
         """Find heavy atoms that are missing from the structure.
         
-        The results are stored into two field: missingAtoms and missingTerminals.  Each of these is a dict whose keys
+        The results are stored into two fields: missingAtoms and missingTerminals.  Each of these is a dict whose keys
         are Residue objects and whose values are lists of atom names.  missingAtoms contains standard atoms that should
         be present in any residue of that type.  missingTerminals contains terminal atoms that should be present at the
         start or end of a chain.
@@ -645,7 +645,7 @@ if __name__=='__main__':
         parser.add_option('--water-box', dest='box', type='float', nargs=3, metavar='X Y Z', help='add a water box. The value is the box dimensions in nm [example: --water-box=2.5 2.4 3.0]')
         parser.add_option('--ph', type='float', default=7.0, dest='ph', help='the pH to use for adding missing hydrogens [default: 7.0]')
         parser.add_option('--positive-ion', default='Na+', dest='positiveIon', choices=('Cs+', 'K+', 'Li+', 'Na+', 'Rb+'), metavar='ION', help='positive ion to include in the water box: Cs+, K+, Li+, Na+, or Rb+ [default: Na+]')
-        parser.add_option('--negative-ion', default='Cl-', dest='negativeIon', choices=('Cl-', 'Br-', 'F-', 'I-'), metavar='ION', help='positive ion to include in the water box: Cl-, Br-, F-, or I- [default: Cl-]')
+        parser.add_option('--negative-ion', default='Cl-', dest='negativeIon', choices=('Cl-', 'Br-', 'F-', 'I-'), metavar='ION', help='negative ion to include in the water box: Cl-, Br-, F-, or I- [default: Cl-]')
         parser.add_option('--ionic-strength', type='float', default=0.0, dest='ionic', metavar='STRENGTH', help='molar concentration of ions to add to the water box [default: 0.0]')
         (options, args) = parser.parse_args()
         if len(args) == 0:
