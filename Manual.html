@@ -38,7 +38,7 @@ The user interface consists of a series of pages for selecting a PDB file and ch
 
 <h3>Load File</h3>
 
-On this page you select the PDB file to process.  You can load a file from your local disk, or enter the identifier of a PDB structure to downlaod from <a href="http://www.rcsb.org">RCSB</a>.
+On this page you select the PDB file to process.  You can load a file from your local disk, or enter the identifier of a PDB structure to download from <a href="http://www.rcsb.org">RCSB</a>.
 
 <h3>Select Chains</h3>
 
@@ -122,8 +122,6 @@ PDBFixer is based on OpenMM, and to use its Python API you should first be famil
 <p>
 To use PDBFixer create a <tt>PDBFixer</tt> object, passing to its constructor a <tt>PdbStructure</tt> object containing the structure to process.  You then call a series of methods on it to perform various transformations.  When all the transformations are done, you can get the new structure from its <tt>topology</tt> and <tt>positions</tt> fields.  The overall outline of your code will look something like this:
 <tt><pre>
-from pdbfixer import PDBFixer
-from simtk.openmm.app.internal.pdbstructure import PdbStructure
 fixer = PDBFixer(PdbStructure(open('myfile.pdb')))
 # ...
 # Call various methods on the PDBFixer
@@ -131,6 +129,14 @@ fixer = PDBFixer(PdbStructure(open('myfile.pdb')))
 PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
 </pre></tt>
 There are many different methods you might call in the middle, depending on what you want to do.  These methods are described below.  Almost all of them are optional, but they <i>must</i> be called in <i>exactly</i> the order listed.  You may choose not to call some of the optional methods, but you may not call them out of order.
+
+<h3>Remove Chains</h3>
+
+To remove unwanted chains from the structure, call
+<p>
+<tt>fixer.removeChains(indices)</tt>
+<p>
+where <tt>indices</tt> is a list of the indices of the chains to remove.
 
 <h3>Identify Missing Residues</h3>
 
@@ -141,6 +147,8 @@ To identify missing residues, call
 This method identifies any residues in the SEQRES records for which no atom data is present.  The residues are not actually added yet: it just stores the results into the <tt>missingResidues</tt> field.  This is a dictionary.  Each key is a tuple consisting of the index of a chain, and the residue index within that chain at which new residues should be inserted.  The corresponding value is a list of the names of residues to insert there.  After calling this method, you can modify the content of that dictionary to specify what residues should actually be inserted.  For example, you can remove an entry to prevent that set of residues from being inserted, or change the identities of the residues to insert.  If you do not want any residues at all to be added, you can just write
 <p>
 <tt>fixer.missingResidues = {}</tt>
+<p>
+The residues actually get added when you call <tt>addMissingAtoms()</tt>, described below.
 
 <h3>Replace Nonstandard Residues</h3>
 
@@ -149,7 +157,7 @@ If you want to replace nonstandard residues with their standard versions, call
 fixer.findNonstandardResidues()
 fixer.replaceNonstandardResidues()
 </pre></tt>
-<tt>findNonstandardResidues()</tt> stores the results into the <tt>nonstandardResidues</tt> field.  This is a dictionary whose keys are <tt>Residue</tt> objects and whose values are the names of the suggested replacement residues.  Before calling <tt>replaceNonstandardResidues()</tt> you can modify the contents of this dictionary.  For example, you can remove an entry to prevent a particular residue from being replaced, or you can change what it will be replaced with.
+<tt>findNonstandardResidues()</tt> stores the results into the <tt>nonstandardResidues</tt> field, which is a list.  Each entry is a tuple whose first element is a <tt>Residue</tt> object and whose second element is the name of the suggested replacement residue.  Before calling <tt>replaceNonstandardResidues()</tt> you can modify the contents of this list.  For example, you can remove an entry to prevent a particular residue from being replaced, or you can change what it will be replaced with.  You can even add new entries if you want to mutate other residues.
 
 <h3>Add Missing Heavy Atoms</h3>
 
@@ -186,6 +194,62 @@ If you want to add a water box, call <tt>addSolvent()</tt>.  This method has sev
 <p>
 <tt>boxSize</tt> is a <tt>Vec3</tt> object specifying the dimensions of the water box to add.  The other options specify the types of ions to add and the desired ionic strength.  Allowed values for <tt>positiveIon</tt> are Cs+, K+, Li+, Na+, and Rb+.  Allowed values for <tt>negativeIon</tt> are Cl-, Br-, F-, and I-.  For example, the following line builds a 5 nm cube of 0.1 molar potassium chloride:
 <p>
-<tt>fixer.addSolvent(Vec3(5, 5, 5)*unit.nanometer, positiveIon='K+', ionicStrength=0.1*molar)</tt>
+<tt>fixer.addSolvent(Vec3(5, 5, 5)*nanometer, positiveIon='K+', ionicStrength=0.1*molar)</tt>
+
+<h3>Examples</h3>
+
+Here is a complete example that ties this together.  It adds all missing atoms including heavy atoms, missing residues, and hydrogens.  It replaces all nonstandard residues by their standard equivalents then deletes all remaining heterogens except water.  Finally, it fills in all gaps with water; that is, it adds a water box whose dimensions match the crystallographic unit cell.  It saves the result to a file called output.pdb.
+<tt><pre>
+from pdbfixer import PDBFixer
+from simtk.openmm.app import PDBFile
+from simtk.openmm.app.internal.pdbstructure import PdbStructure
+fixer = PDBFixer(PdbStructure(open('myfile.pdb')))
+fixer.findMissingResidues()
+fixer.findNonstandardResidues()
+fixer.replaceNonstandardResidues()
+fixer.findMissingAtoms()
+fixer.addMissingAtoms()
+fixer.removeHeterogens(True)
+fixer.addMissingHydrogens(7.0)
+fixer.addSolvent(fixer.topology.getUnitCellDimensions())
+PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
+</pre></tt>
+
+Suppose you want to keep only the first chain in the file and remove all the others.  To do this, call <tt>removeChains()</tt>:
+<tt><pre>
+<span style="color:grey">fixer = PDBFixer(PdbStructure(open('myfile.pdb')))</span>
+numChains = len(list(fixer.topology.chains()))
+fixer.removeChains(range(1, numChains))
+<span style="color:grey">fixer.findMissingResidues()</span>
+</pre></tt>
+
+Suppose you only want to add missing residues in the <i>middle</i> of a chain, not ones at the start or end of the chain.  This can be done by modifying the <tt>missingResidues</tt> field immediately after calling <tt>findMissingResidues()</tt>:
+<tt><pre>
+<span style="color:grey">fixer.findMissingResidues()</span>
+chains = list(fixer.topology.chains())
+keys = fixer.missingResidues.keys()
+for key in keys:
+    chain = chains[key[0]]
+    if key[1] == 0 or key[1] == len(list(chain.residues())):
+        del fixer.missingResidues[key]
+<span style="color:grey">fixer.findNonstandardResidues()</span>
+</pre></tt>
+
+Suppose that instead of matching the size of the crystallographic unit cell, you want to add a cubic water box large enough to hold the entire system.  That is, you want to compute the range of atom positions along each axis, then set the size of the water box to match the largest axis.  This can be done as follows:
+<tt><pre>
+<span style="color:grey">fixer.addMissingHydrogens(7.0)</span>
+maxSize = max(max((pos[i] for pos in fixer.positions))-min((pos[i] for pos in fixer.positions)) for i in range(3))
+boxSize = maxSize*Vec3(1, 1, 1)
+fixer.addSolvent(boxSize)
+<span style="color:grey">PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))</span>
+</pre></tt>
+
+Suppose you want to replace all nonstandard residues by alanine.  <tt>findNonstandardResidues()</tt> selects a suggested replacement for each residue, but you can modify that before calling <tt>replaceNonstandardResidues()</tt>:
+<tt><pre>
+<span style="color:grey">fixer.findNonstandardResidues()</span>
+fixer.nonstandardResidues = [(residue, 'ALA') for residue, replacement in fixer.nonstandardResidues]
+<span style="color:grey">fixer.replaceNonstandardResidues()</span>
+</pre></tt>
+
 </body>
 </html>
