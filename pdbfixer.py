@@ -116,7 +116,7 @@ class PDBFixer(object):
         templatesPath = os.path.join(os.path.dirname(__file__), 'templates')
         for file in os.listdir(templatesPath):
             templatePdb = app.PDBFile(os.path.join(templatesPath, file))
-            name = templatePdb.topology.residues().next().name
+            name = next(templatePdb.topology.residues()).name
             self.templates[name] = templatePdb
         
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
@@ -256,7 +256,7 @@ class PDBFixer(object):
             newResidue = chain.topology.addResidue(residueName, chain)
             translate = startPosition+(endPosition-startPosition)*(i+1.0)/(len(residueNames)+1.0)
             templateAtoms = list(template.topology.atoms())
-            if newResidue == chain.residues().next():
+            if newResidue == next(chain.residues()):
                 templateAtoms = [atom for atom in templateAtoms if atom.name not in ('P', 'OP1', 'OP2')]
             for atom in templateAtoms:
                 newAtom = chain.topology.addAtom(atom.name, atom.element, newResidue)
@@ -443,7 +443,7 @@ class PDBFixer(object):
             
             # Set any previously existing atoms to be massless, they so won't move.
             
-            for atom in existingAtomMap.itervalues():
+            for atom in existingAtomMap.values():
                 system.setParticleMass(atom.index, 0.0)
             
             # If any heavy atoms were omitted, add them back to avoid steric clashes.

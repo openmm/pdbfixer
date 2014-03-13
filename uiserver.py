@@ -1,8 +1,14 @@
 from threading import Thread
-from SocketServer import ThreadingMixIn
-from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
-from urlparse import parse_qs
 import cgi
+import sys
+try:
+    from socketserver import ThreadingMixIn
+    from http.server import HTTPServer, BaseHTTPRequestHandler
+    from urllib.parse import parse_qs
+except:
+    from SocketServer import ThreadingMixIn
+    from BaseHTTPServer import HTTPServer, BaseHTTPRequestHandler
+    from urlparse import parse_qs
 
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -40,6 +46,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-type", type)
         self.send_header("Content-length", str(len(response)))
         self.end_headers()
+        if sys.version_info.major > 2:
+            response = bytes(response, 'UTF-8')
         self.wfile.write(response)
     
     def sendDownload(self, download, filename):
@@ -49,6 +57,8 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-length", str(len(download)))
         self.send_header("Content-Disposition", 'attachment; filename="%s"' % filename)
         self.end_headers()
+        if sys.version_info.major > 2:
+            download = bytes(download, 'UTF-8')
         self.wfile.write(download)
 
 class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):

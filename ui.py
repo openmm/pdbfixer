@@ -5,9 +5,14 @@ from pdbfixer import PDBFixer, substitutions, proteinResidues, dnaResidues, rnaR
 import uiserver
 import webbrowser
 import os.path
-import urllib2
 import gzip
-from cStringIO import StringIO
+from io import BytesIO
+try:
+    from urllib.request import urlopen
+    from io import StringIO
+except:
+    from urllib2 import urlopen
+    from cStringIO import StringIO
 
 def loadHtmlFile(name):
     htmlPath = os.path.join(os.path.dirname(__file__), 'html')
@@ -25,16 +30,16 @@ def startPageCallback(parameters, handler):
     global fixer
     if 'type' in parameters:
         if parameters.getfirst('type') == 'local':
-            pdb = PdbStructure(parameters['pdbfile'].value.splitlines())
+            pdb = PdbStructure(parameters['pdbfile'].value.decode().splitlines())
             fixer = PDBFixer(pdb)
             displayDeleteChainsPage()
         else:
             id = parameters.getfirst('pdbid')
             url = "ftp://ftp.wwpdb.org/pub/pdb/data/structures/all/pdb/pdb"+id.lower()+".ent.gz"
             try:
-                response = urllib2.urlopen(url)
-                content = gzip.GzipFile(fileobj=StringIO(response.read())).read()
-                pdb = PdbStructure(content.splitlines())
+                response = urlopen(url)
+                content = gzip.GzipFile(fileobj=BytesIO(response.read())).read()
+                pdb = PdbStructure(content.decode().splitlines())
                 fixer = PDBFixer(pdb)
                 displayDeleteChainsPage()
             except:
@@ -160,7 +165,7 @@ def displayConvertResiduesPage():
 def displayMissingAtomsPage():
     uiserver.setCallback(missingAtomsPageCallback)
     fixer.findMissingAtoms()
-    allResidues = list(set(fixer.missingAtoms.iterkeys()).union(fixer.missingTerminals.iterkeys()))
+    allResidues = list(set(fixer.missingAtoms.keys()).union(fixer.missingTerminals.keys()))
     allResidues.sort(key=lambda x: x.index)
     if len(allResidues) == 0:
         fixer.addMissingAtoms()
