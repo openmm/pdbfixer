@@ -29,6 +29,7 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
+from __future__ import print_function
 __author__ = "Peter Eastman"
 __version__ = "1.0"
 
@@ -42,11 +43,11 @@ angleK = 10.0
 
 # Create the new force field file.
 
-print '<ForceField>'
+print('<ForceField>')
 
 # Print the atom types, while identifying types and classes to omit.
 
-print ' <AtomTypes>'
+print(' <AtomTypes>')
 omitTypes = set()
 omitClasses = set()
 for atomType in forcefield._atomTypes:
@@ -55,94 +56,94 @@ for atomType in forcefield._atomTypes:
         omitTypes.add(atomType)
         omitClasses.add(atomClass)
     else:
-        print '  <Type name="%s" class="%s" element="%s" mass="%g"/>' % (atomType, atomClass, element.symbol, mass)
-print ' </AtomTypes>'
+        print('  <Type name="%s" class="%s" element="%s" mass="%g"/>' % (atomType, atomClass, element.symbol, mass))
+print(' </AtomTypes>')
 
 # Print the residue templates.
 
-print ' <Residues>'
-for template in forcefield._templates.itervalues():
-    print '  <Residue name="%s">' % template.name
+print(' <Residues>')
+for template in forcefield._templates.values():
+    print('  <Residue name="%s">' % template.name)
     atomIndex = {}
     for i, atom in enumerate(template.atoms):
         if atom.type not in omitTypes:
-            print '   <Atom name="%s" type="%s"/>' % (atom.name, atom.type)
+            print('   <Atom name="%s" type="%s"/>' % (atom.name, atom.type))
             atomIndex[i] = len(atomIndex)
     for (a1, a2) in template.bonds:
         if a1 in atomIndex and a2 in atomIndex:
-            print '   <Bond from="%d" to="%d"/>' % (atomIndex[a1], atomIndex[a2])
+            print('   <Bond from="%d" to="%d"/>' % (atomIndex[a1], atomIndex[a2]))
     for atom in template.externalBonds:
         if atom in atomIndex:
-            print '   <ExternalBond from="%d"/>' % atomIndex[atom]
-    print '  </Residue>'
-print ' </Residues>'
+            print('   <ExternalBond from="%d"/>' % atomIndex[atom])
+    print('  </Residue>')
+print(' </Residues>')
 
 # Print the harmonic bonds.
 
-print ' <HarmonicBondForce>'
+print(' <HarmonicBondForce>')
 bonds = [f for f in forcefield._forces if isinstance(f, ff.HarmonicBondGenerator)][0]
 for i in range(len(bonds.types1)):
-    type1 = iter(bonds.types1[i]).next()
-    type2 = iter(bonds.types2[i]).next()
+    type1 = next(iter(bonds.types1[i]))
+    type2 = next(iter(bonds.types2[i]))
     if type1 not in omitTypes and type2 not in omitTypes:
         class1 = forcefield._atomTypes[type1][0]
         class2 = forcefield._atomTypes[type2][0]
-        print '  <Bond class1="%s" class2="%s" length="%g" k="%g"/>' % (class1, class2, bonds.length[i], bondK)
-print ' </HarmonicBondForce>'
+        print('  <Bond class1="%s" class2="%s" length="%g" k="%g"/>' % (class1, class2, bonds.length[i], bondK))
+print(' </HarmonicBondForce>')
 
 # Print the harmonic angles.
 
-print ' <HarmonicAngleForce>'
+print(' <HarmonicAngleForce>')
 angles = [f for f in forcefield._forces if isinstance(f, ff.HarmonicAngleGenerator)][0]
 for i in range(len(angles.types1)):
-    type1 = iter(angles.types1[i]).next()
-    type2 = iter(angles.types2[i]).next()
-    type3 = iter(angles.types3[i]).next()
+    type1 = next(iter(angles.types1[i]))
+    type2 = next(iter(angles.types2[i]))
+    type3 = next(iter(angles.types3[i]))
     if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes:
         class1 = forcefield._atomTypes[type1][0]
         class2 = forcefield._atomTypes[type2][0]
         class3 = forcefield._atomTypes[type3][0]
-        print '  <Angle class1="%s" class2="%s" class3="%s" angle="%g" k="%g"/>' % (class1, class2, class3, angles.angle[i], angleK)
-print ' </HarmonicAngleForce>'
+        print('  <Angle class1="%s" class2="%s" class3="%s" angle="%g" k="%g"/>' % (class1, class2, class3, angles.angle[i], angleK))
+print(' </HarmonicAngleForce>')
 
 # Print the periodic torsions.
 
-print ' <PeriodicTorsionForce>'
+print(' <PeriodicTorsionForce>')
 torsions = [f for f in forcefield._forces if isinstance(f, ff.PeriodicTorsionGenerator)][0]
 for torsion in torsions.proper:
-    type1 = iter(torsion.types1).next()
-    type2 = iter(torsion.types2).next()
-    type3 = iter(torsion.types3).next()
-    type4= iter(torsion.types4).next()
+    type1 = next(iter(torsion.types1))
+    type2 = next(iter(torsion.types2))
+    type3 = next(iter(torsion.types3))
+    type4= next(iter(torsion.types4))
     if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes and type4 not in omitTypes:
         class1 = forcefield._atomTypes[type1][0]
         class2 = forcefield._atomTypes[type2][0]
         class3 = forcefield._atomTypes[type3][0]
         class4 = forcefield._atomTypes[type4][0]
-        print '  <Proper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4),
+        print('  <Proper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4), end=' ')
         for i in range(len(torsion.k)):
-            print ' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]),
-        print '/>'
+            print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
+        print('/>')
 for torsion in torsions.improper:
-    type1 = iter(torsion.types1).next()
-    type2 = iter(torsion.types2).next()
-    type3 = iter(torsion.types3).next()
-    type4= iter(torsion.types4).next()
+    type1 = next(iter(torsion.types1))
+    type2 = next(iter(torsion.types2))
+    type3 = next(iter(torsion.types3))
+    type4= next(iter(torsion.types4))
     if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes and type4 not in omitTypes:
         class1 = forcefield._atomTypes[type1][0]
         class2 = forcefield._atomTypes[type2][0]
         class3 = forcefield._atomTypes[type3][0]
         class4 = forcefield._atomTypes[type4][0]
-        print '  <Improper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4),
+        print('  <Improper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4), end=' ')
         for i in range(len(torsion.k)):
-            print ' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]),
-        print '/>'
-print ' </PeriodicTorsionForce>'
+            print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
+        print('/>')
+print(' </PeriodicTorsionForce>')
 
 # Print the script to add the soft-core nonbonded force.
 
-print ' <Script>'
-print """import simtk.openmm as mm
+print(' <Script>')
+print("""import simtk.openmm as mm
 nb = mm.CustomNonbondedForce('C/((r/0.2)^4+1)')
 nb.addGlobalParameter('C', 1.0)
 sys.addForce(nb)
@@ -154,7 +155,7 @@ for bond in data.bonds:
 for angle in data.angles:
     exclusions.add((min(angle[0], angle[2]), max(angle[0], angle[2])))
 for a1, a2 in exclusions:
-    nb.addExclusion(a1, a2)"""
-print ' </Script>'
+    nb.addExclusion(a1, a2)""")
+print(' </Script>')
 
-print '</ForceField>'
+print('</ForceField>')
