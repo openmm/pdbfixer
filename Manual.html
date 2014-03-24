@@ -23,14 +23,25 @@ Protein Data Bank (PDB) files often have a number of problems that must be fixed
 PDBFixer can fix all of these problems for you in a fully automated way.  You simply select a file, tell it which problems to fix, and it does everything else.
 <p>
 PDBFixer can be used in three different ways: as a desktop application with a graphical user interface; as a command line application; or as a Python API.  This allows you to use it in whatever way best matches your own needs for flexibility, ease of use, and scriptability.  The following sections describe how to use it in each of these ways.
-<p>
-Before running PDBFixer, you must first install <a href="https://simtk.org/home/openmm">OpenMM</a> 5.2 or later.  Follow the installation instructions in the OpenMM manual.  It is also highly recommended that you install CUDA or OpenCL.  In principle PDBFixer can use the OpenMM reference platform, but it will be prohibitively slow.  Finally, PDBFixer requires that <a href="http://www.numpy.org">NumPy</a> be installed.
 
-<h1>2. PDBFixer as a Desktop Application</h1>
+
+<h1>2. Installation</h2>
+
+To install PDBFixer, navigate to the root directory of the source distribution you've download and type
+<p>
+<tt>python setup.py install</tt>
+<p>
+This will install the PDBFixer python package as well as the command line program <tt>pdbfixer</tt>.
+
+<p>
+Before running PDBFixer, you must first install <a href="https://simtk.org/home/openmm">OpenMM</a> 5.2 or later.  Follow the installation instructions in the OpenMM manual.  It is also highly recommended that you install CUDA or OpenCL.  In principle PDBFixer can use the OpenMM reference platform, but it will be prohibitively slow. PDBFixer requires that <a href="http://www.numpy.org">NumPy</a> be installed.
+
+
+<h1>3. PDBFixer as a Desktop Application</h1>
 
 To run PDBFixer as a desktop application, type
 <p>
-<tt>python pdbfixer.py</tt>
+<tt>pdbfixer</tt>
 <p>
 on the command line.  PDBFixer displays its user interface through a web browser, but it is still a single user desktop application.  It should automatically launch a web browser and open a new window displaying the user interface.  If for any reason this does not happen, you can launch a web browser yourself and point it to <a href="http://localhost:8000">http://localhost:8000</a>.
 <p>
@@ -70,18 +81,18 @@ This page gives you the chance to make several other optional changes:
 
 You're all done!  Click "Save File" to save the processed PDB file to disk.  Then click "Process Another File" if you have more files to process, or "Quit" (in the top right corner of the page) if you are finished.
 
-<h1>3. PDBFixer as a Command Line Application</h1>
+<h1>4. PDBFixer as a Command Line Application</h1>
 
 PDBFixer provides a simple command line interface that is especially useful if you want to script it to process many files at once.  This interface is significantly less flexible than either the desktop interface or the Python API, but it is still powerful enough for many purposes.
 <p>
 To get usage instructions for the command line interface, type
 <p>
-<tt>python pdbfixer.py --help</tt>
+<tt>pdbfixer --help</tt>
 <p>
 This displays the following information:
 <tt><pre>
-Usage: pdbfixer.py
-       pdbfixer.py [options] filename
+Usage: pdbfixer
+       pdbfixer [options] filename
 
 When run with no arguments, it launches the user interface.  If any arguments are specified, it runs in command line mode.
 
@@ -110,11 +121,11 @@ Options:
 </pre></tt>
 For example, consider the following command line:
 <p>
-<tt>python pdbfixer.py --keep-heterogens=water --replace-nonstandard --water-box=4.0 4.0 3.0 myfile.pdb</tt>
+<tt>pdbfixer --keep-heterogens=water --replace-nonstandard --water-box=4.0 4.0 3.0 myfile.pdb</tt>
 <p>
 This will load the file "myfile.pdb".  It will add any missing atoms to existing residues, but not add any missing residues (because we did not specify <tt>--add-residues</tt>).  Hydrogens will be added that are appropriate at pH 7.0 (the default).  If the file contains any nonstandard amino acids or nucleotides, they will be replaced with the closest equivalent standard ones.  Any water molecules present in the file will be kept, but all other heterogens will be deleted.  Finally a water box of size 4 by 4 by 3 nanometers will be added surrounding the structure.  If necessary, counterions will be added to neutralize it (Na+ or Cl-), but no other ions will be added (because we accepted the default ionic strength of 0.0).  After making all these changes, the result will be written to a file called "output.pdb".
 
-<h1>4. PDBFixer as a Python API</h1>
+<h1>5. PDBFixer as a Python API</h1>
 
 This is the most powerful way to use PDBFixer.  It allows you to script the processing of PDB files while maintaining precise programmatic control of every part of the process.
 <p>
