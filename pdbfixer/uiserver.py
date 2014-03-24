@@ -69,7 +69,9 @@ callback = {}
 server = _ThreadingHTTPServer(("localhost", 8000), _Handler)
 
 def beginServing():
-    Thread(target=server.serve_forever).start()
+    t = Thread(target=server.serve_forever)
+    t.daemon = True
+    t.start()
 
 def setContent(newContent):
     global content

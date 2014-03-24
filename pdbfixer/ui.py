@@ -6,6 +6,7 @@ import uiserver
 import webbrowser
 import os.path
 import gzip
+import time
 from io import BytesIO
 try:
     from urllib.request import urlopen
@@ -207,3 +208,12 @@ def launchUI():
     url = 'http://localhost:'+str(uiserver.server.server_address[1])
     print("PDBFixer running: %s " % url)
     webbrowser.open(url)
+
+    # the uiserver is running in a background daemon thread that dies whenever
+    # the main thread exits. So, to keep the whole process alive, we just sleep
+    # here in the main thread. When Control-C is called, the main thread shuts
+    # down and then the uiserver exits. Without this daemon/sleep combo, the
+    # process cannot be killed with Control-C. Reference stack overflow link:
+    # http://stackoverflow.com/a/11816038/1079728
+    while True:
+        time.sleep(0.5)
