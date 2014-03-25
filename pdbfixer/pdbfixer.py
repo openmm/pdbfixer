@@ -626,7 +626,7 @@ class PDBFixer(object):
         return nearest
 
 
-if __name__=='__main__':
+def main():
     if len(sys.argv) < 2:
         # Display the UI.
         
@@ -674,3 +674,6 @@ if __name__=='__main__':
         if options.box is not None:
             fixer.addSolvent(options.box*unit.nanometer, options.positiveIon, options.negativeIon, options.ionic*unit.molar)
         app.PDBFile.writeFile(fixer.topology, fixer.positions, open(options.output, 'w'))
+
+if __name__ == '__main__':
+    main()
