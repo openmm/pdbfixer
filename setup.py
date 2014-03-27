@@ -105,7 +105,7 @@ setup(
     long_description="\n".join(DOCLINES[2:]),
     version=__version__,
     license='MIT',
-    url='https://github.com/peastman/pdbfixer',
+    url='https://github.com/SimTk/pdbfixer',
     platforms=['Linux', 'Mac OS-X', 'Unix', 'Windows'],
     classifiers=CLASSIFIERS.splitlines(),
     packages=find_packages(),
