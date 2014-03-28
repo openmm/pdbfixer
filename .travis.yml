@@ -1,7 +1,7 @@
 language: c
 install:
     - sudo apt-get update -qq
-    - sudo apt-get install -qq python-dev python-pip python-yaml g++
+    - sudo apt-get install -qq python-dev python-pip python-yaml g++ ftp
     - sudo pip install conda
     - sudo conda init
     - conda config --add channels http://conda.binstar.org/omnia
