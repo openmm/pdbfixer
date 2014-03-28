@@ -100,8 +100,7 @@ def test_build_and_simulate():
 
         from eventlet.timeout import Timeout
         timeout_seconds = 30.0
-        timeout = Timeout(timeout_seconds)
-        try:        
+        with Timeout(timeout_seconds) as timeout:        
             from pdbfixer.pdbfixer import PDBFixer, PdbStructure
             from simtk.openmm import app
             stage = "Creating PDBFixer..."
