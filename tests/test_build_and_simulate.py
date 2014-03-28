@@ -65,8 +65,7 @@ def simulate(pdbcode, pdb_filename):
 def test_build_and_simulate():
     # These are tough PDB codes from http://www.umass.edu/microbio/chime/pe_beta/pe/protexpl/badpdbs.htm
     pdbcodes_to_build = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
-    pdbcodes_to_build = ['1VII'] # DEBUG
-    pdbcodes_to_simulate = ['1VII'] # should be a subset of pdbcodes_to_build
+    pdbcodes_to_simulate = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
 
     # Set up PDB retrieval.
     from Bio.PDB import PDBList
@@ -99,33 +98,64 @@ def test_build_and_simulate():
         infile = open(input_pdb_filename)
         outfile = open(output_pdb_filename, 'w')
 
-        try:
+        from eventlet.timeout import Timeout
+        timeout_seconds = 30.0
+        timeout = Timeout(timeout_seconds)
+        try:        
             from pdbfixer.pdbfixer import PDBFixer, PdbStructure
             from simtk.openmm import app
+            stage = "Creating PDBFixer..."
             fixer = PDBFixer(PdbStructure(infile))
+            stage = "Finding missing residues..."
             fixer.findMissingResidues()
+            stage = "Finding nonstandard residues..."
             fixer.findNonstandardResidues()
+            stage = "Replacing nonstandard residues..."
             fixer.replaceNonstandardResidues()
+            stage = "Finding missing atoms..."
             fixer.findMissingAtoms()
+            stage = "Adding missing atoms..."
             fixer.addMissingAtoms()
+            stage = "Removing heterogens..."
             fixer.removeHeterogens(False)
+            stage = "Adding missing hydrogens..."
             fixer.addMissingHydrogens(pH)
-            #fixer.addSolvent(box*unit.nanometer, positiveIon, negativeIon, ionic*unit.molar)
+            stage = "Writing PDB file..."
             app.PDBFile.writeFile(fixer.topology, fixer.positions, outfile)
+            stage = "Done."
             infile.close()
             outfile.close()
-            
-            # Test simulating this with OpenMM.
-            if pdbcode in pdbcodes_to_simulate:
-                simulate(pdbcode, output_pdb_filename)
 
-            # Delete input file.
-            os.remove(input_pdb_filename)
-            os.remove(output_pdb_filename)
+        except Timeout as e:
+            print str(e)
+            timeout.cancel()
+            print "PDB code %s timed out in stage '%s'." % (pdbcode, stage)
 
         except Exception as e:
             print str(e)
+            timeout.cancel()
             success = False
+
+        # Test simulating this with OpenMM.
+        if pdbcode in pdbcodes_to_simulate:            
+            timeout_seconds = 30.0
+            timeout = Timeout(timeout_seconds)
+            try:
+                simulate(pdbcode, output_pdb_filename)
+
+            except Timeout as e:
+                print str(e)
+                timeout.cancel()
+                print "PDB code %s timed out in stage '%s'." % (pdbcode, stage)
+
+            except Exception as e:
+                print str(e)
+                timeout.cancel()
+                success = False
+
+        # Clean up.
+        os.remove(input_pdb_filename)
+        os.remove(output_pdb_filename)
 
     if not success:
         raise Exception("build test failed on one or more PDB files.")
