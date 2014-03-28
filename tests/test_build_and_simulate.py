@@ -4,6 +4,7 @@ import simtk.openmm
 import Bio.PDB
 
 import os
+import os.path
 import sys
 import numpy
 
@@ -25,13 +26,6 @@ class Watchdog:
 
     def defaultHandler(self):
         raise self
-
-
-
-
-
-
-
 
 def simulate(pdbcode, pdb_filename):
     from simtk.openmm import app
@@ -103,8 +97,14 @@ def test_build_and_simulate():
         print pdbcode
 
         try:
+            # Remove file if it exists already.
+            input_pdb_filename = 'pdb' + pdbcode + '.ent'
+            if os.path.exists(input_pdb_filename):  
+                os.remove(input_pdb_filename)                
+
             print "Attempting to retrieve PDB code '%s' from %s..." % (pdbcode, PDBList.alternative_download_url)
             input_pdb_filename = pdblist.retrieve_pdb_file(pdbcode, pdir='.')
+
         except Exception as e:
             print str(e)
             print "Could not download PDB code '%s'" % pdbcode
@@ -123,9 +123,10 @@ def test_build_and_simulate():
 
         infile = open(input_pdb_filename)
         outfile = open(output_pdb_filename, 'w')
-
         
-        timeout_seconds = 30.0
+        success = True
+
+        timeout_seconds = 0.1
         watchdog = Watchdog(timeout_seconds)
         try:        
             from pdbfixer.pdbfixer import PDBFixer, PdbStructure
@@ -151,11 +152,19 @@ def test_build_and_simulate():
             stage = "Done."
             infile.close()
             outfile.close()
+
         except Watchdog:
             print "timed out fixing PDB %s" % pdbcode
-        # Test simulating this with OpenMM.
+            success = False
+
+        except Exception as e:
+            print str(e)
+            success = False
+        
         watchdog.stop()
         del watchdog
+                    
+        # Test simulating this with OpenMM.
         if pdbcode in pdbcodes_to_simulate:
             watchdog = Watchdog(timeout_seconds)
             try:
@@ -164,7 +173,14 @@ def test_build_and_simulate():
             except Watchdog:
                 print "PDB code %s timed out in stage '%s'." % (pdbcode, stage)
                 success = False
+
+            except Exception as e:
+                print str(e)
+                success = False
+        
             watchdog.stop()
+            del watchdog
+
         # Clean up.
         os.remove(input_pdb_filename)
         os.remove(output_pdb_filename)
