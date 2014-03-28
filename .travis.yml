@@ -10,8 +10,7 @@ install:
     
 script:
     - python setup.py install
-    - nosetests tests/test_build.py
-    - nosetests tests/test_simulate.py
+    - nosetests tests/test_build_and_simulate.py
 
 after_script:
     - pyflakes pdbfixer/*.py
