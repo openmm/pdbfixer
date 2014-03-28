@@ -125,16 +125,6 @@ def test_build_and_simulate():
             infile.close()
             outfile.close()
 
-        except Timeout as e:
-            print str(e)
-            timeout.cancel()
-            print "PDB code %s timed out in stage '%s'." % (pdbcode, stage)
-
-        except Exception as e:
-            print str(e)
-            timeout.cancel()
-            success = False
-
         # Test simulating this with OpenMM.
         if pdbcode in pdbcodes_to_simulate:            
             timeout_seconds = 30.0
