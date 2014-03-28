@@ -15,7 +15,10 @@ def test_build():
     success = True
 
     for pdbcode in pdbcodes:
+        print pdbcode
+
         try:
+            print "Attempting to retrieve PDB code '%s' from %s..." % (pdbcode, PDBList.alternative_download_url)
             input_pdb_filename = pdblist.retrieve_pdb_file(pdbcode, pdir='.')
         except Exception as e:
             print str(e)
@@ -37,18 +40,28 @@ def test_build():
         outfile = open(output_pdb_filename, 'w')
 
         try:
+            print "Creating PDBFixer..."
             fixer = PDBFixer(PdbStructure(infile))
+            print "Finding missing residues..."
             fixer.findMissingResidues()
+            print "Finding nonstandard residues..."
             fixer.findNonstandardResidues()
+            print "Replacing nonstandard residues..."
             fixer.replaceNonstandardResidues()
+            print "Finding missing atoms..."
             fixer.findMissingAtoms()
+            print "Adding missing atoms..."
             fixer.addMissingAtoms()
+            print "Removing heterogens..."
             fixer.removeHeterogens(False)
+            print "Adding missing hydrogens..."
             fixer.addMissingHydrogens(pH)
             #fixer.addSolvent(box*unit.nanometer, positiveIon, negativeIon, ionic*unit.molar)
+            print "Writing PDB file..."
             app.PDBFile.writeFile(fixer.topology, fixer.positions, outfile)
             infile.close()
             outfile.close()
+            print "Done."
             
             # Delete input file.
             os.remove(input_pdb_filename)
@@ -61,4 +74,4 @@ def test_build():
     if not success:
         raise Exception("build test failed on one or more PDB files.")
             
-
+test_build()
