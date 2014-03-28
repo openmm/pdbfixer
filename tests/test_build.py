@@ -9,8 +9,8 @@ import numpy
 
 def test_build():
     # These are tough PDB codes from http://www.umass.edu/microbio/chime/pe_beta/pe/protexpl/badpdbs.htm
-    pdbcodes = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
-    pdbcodes = ['1VII'] # DEBUG: just use one
+    build_pdbcodes = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ'] # structures to be built 
+    simulate_pdbcodes = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ'] # structures to be simulated
 
     # Set up PDB retrieval.
     from Bio.PDB import PDBList

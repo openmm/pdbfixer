@@ -17,7 +17,7 @@ def simulate(pdbcode, pdb_filename):
     pdb = app.PDBFile(pdb_filename)
     
     # Set up implicit solvent forcefield.
-    forcefield = app.ForceField('amber99sbildn.xml', 'amber99_obc.xml')
+    forcefield = app.ForceField('amber99sbildn.xml')
     
     # Create the system.
     system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.NoCutoff, constraints=app.HBonds)
@@ -62,10 +62,11 @@ def simulate(pdbcode, pdb_filename):
 
     return
 
-def test_simulate():
+def test_build_and_simulate():
     # These are tough PDB codes from http://www.umass.edu/microbio/chime/pe_beta/pe/protexpl/badpdbs.htm
-    pdbcodes = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
-    pdbcodes = ['1VII'] # DEBUG: just use one
+    pdbcodes_to_build = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
+    pdbcodes_to_build = ['1VII'] # DEBUG
+    pdbcodes_to_simulate = ['1VII'] # should be a subset of pdbcodes_to_build
 
     # Set up PDB retrieval.
     from Bio.PDB import PDBList
@@ -73,7 +74,7 @@ def test_simulate():
 
     success = True
 
-    for pdbcode in pdbcodes:
+    for pdbcode in pdbcodes_to_build:
         print pdbcode
 
         try:
@@ -115,7 +116,8 @@ def test_simulate():
             outfile.close()
             
             # Test simulating this with OpenMM.
-            simulate(pdbcode, output_pdb_filename)
+            if pdbcode in pdbcodes_to_simulate:
+                simulate(pdbcode, output_pdb_filename)
 
             # Delete input file.
             os.remove(input_pdb_filename)
@@ -129,4 +131,4 @@ def test_simulate():
         raise Exception("build test failed on one or more PDB files.")
 
 if __name__ == '__main__':
-    test_simulate()
+    test_build_and_simulate()
