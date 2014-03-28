@@ -6,8 +6,8 @@ install:
     - sudo apt-get install -qq python-dev python-pip python-yaml g++
     - sudo pip install conda
     - sudo conda init
-    - conda config --add channels http://conda.binstar.org/rmcgibbo
-    - conda create --yes --name test numpy scipy biopython pyflakes openmm
+    - conda config --add channels http://conda.binstar.org/omnia
+    - conda create --yes --name test numpy biopython pyflakes openmm
     
 script:
     - python setup.py install
