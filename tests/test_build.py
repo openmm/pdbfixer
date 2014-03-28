@@ -61,7 +61,8 @@ def test_build():
             app.PDBFile.writeFile(fixer.topology, fixer.positions, outfile)
             infile.close()
             outfile.close()
-            print "Done."
+            print "Done."fg
+            
             
             # Delete input file.
             os.remove(input_pdb_filename)
