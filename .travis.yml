@@ -1,0 +1,19 @@
+language: python
+python:
+  - "2.7"
+install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq python-dev python-pip python-yaml g++
+    - sudo pip install conda
+    - sudo conda init
+    - conda config --add channels http://conda.binstar.org/rmcgibbo
+    - conda create --yes --name test numpy scipy biopython pyflakes openmm
+    
+script:
+    - python setup.py install
+    - nosetests tests/test_build.py
+    - nosetests tests/test_simulate.py
+
+after_script:
+    - pyflakes pdbfixer/*.py
+
