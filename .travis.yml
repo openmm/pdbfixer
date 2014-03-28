@@ -8,6 +8,7 @@ install:
     - sudo conda init
     - conda config --add channels http://conda.binstar.org/omnia
     - conda create --yes --name test numpy biopython pyflakes openmm
+    - export PATH="$HOME/envs/test/bin/:$PATH"
     
 script:
     - python setup.py install
