@@ -7,6 +7,32 @@ import os
 import sys
 import numpy
 
+from threading import Timer
+
+#from a solution on stackoverflow
+class Watchdog:
+    def __init__(self, timeout, userHandler=None):  # timeout in seconds
+        self.timeout = timeout
+        self.handler = userHandler if userHandler is not None else self.defaultHandler
+        self.timer = Timer(self.timeout, self.handler)
+
+    def reset(self):
+        self.timer.cancel()
+        self.timer = Timer(self.timeout, self.handler)
+
+    def stop(self):
+        self.timer.cancel()
+
+    def defaultHandler(self):
+        raise self
+
+
+
+
+
+
+
+
 def simulate(pdbcode, pdb_filename):
     from simtk.openmm import app
     import simtk.openmm as mm
@@ -98,9 +124,10 @@ def test_build_and_simulate():
         infile = open(input_pdb_filename)
         outfile = open(output_pdb_filename, 'w')
 
-        from eventlet.timeout import Timeout
+        
         timeout_seconds = 30.0
-        with Timeout(timeout_seconds) as timeout:        
+        watchdog = Watchdog(timeout_seconds)
+        try:        
             from pdbfixer.pdbfixer import PDBFixer, PdbStructure
             from simtk.openmm import app
             stage = "Creating PDBFixer..."
@@ -124,24 +151,20 @@ def test_build_and_simulate():
             stage = "Done."
             infile.close()
             outfile.close()
-
+        except Watchdog:
+            print "timed out fixing PDB %s" % pdbcode
         # Test simulating this with OpenMM.
-        if pdbcode in pdbcodes_to_simulate:            
-            timeout_seconds = 30.0
-            timeout = Timeout(timeout_seconds)
+        watchdog.stop()
+        del watchdog
+        if pdbcode in pdbcodes_to_simulate:
+            watchdog = Watchdog(timeout_seconds)
             try:
                 simulate(pdbcode, output_pdb_filename)
-
-            except Timeout as e:
-                print str(e)
-                timeout.cancel()
+                
+            except Watchdog:
                 print "PDB code %s timed out in stage '%s'." % (pdbcode, stage)
-
-            except Exception as e:
-                print str(e)
-                timeout.cancel()
                 success = False
-
+            watchdog.stop()
         # Clean up.
         os.remove(input_pdb_filename)
         os.remove(output_pdb_filename)
