@@ -1,8 +1,11 @@
-from Bio.PDB import PDBList
-from simtk import unit
-from pdbfixer.pdbfixer import *
+
+import pdbfixer
+import simtk.openmm 
+import Bio.PDB
+
 import os
 import sys
+import numpy
 
 def test_build():
     # These are tough PDB codes from http://www.umass.edu/microbio/chime/pe_beta/pe/protexpl/badpdbs.htm
@@ -10,6 +13,7 @@ def test_build():
     pdbcodes = ['1VII'] # DEBUG: just use one
 
     # Set up PDB retrieval.
+    from Bio.PDB import PDBList
     pdblist = PDBList(server=PDBList.alternative_download_url)
 
     success = True
@@ -29,6 +33,7 @@ def test_build():
 
         # PDB setup parameters.
         # TODO: Try several combinations?
+        from simtk import unit
         pH = 7.0
         ionic = 50.0 * unit.millimolar
         box = 10.0 * unit.angstrom
@@ -39,6 +44,8 @@ def test_build():
         outfile = open(output_pdb_filename, 'w')
 
         try:
+            from pdbfixer.pdbfixer import PDBFixer, PdbStructure
+            from simtk.openmm import app
             fixer = PDBFixer(PdbStructure(infile))
             fixer.findMissingResidues()
             fixer.findNonstandardResidues()
@@ -63,3 +70,5 @@ def test_build():
     if not success:
         raise Exception("build test failed on one or more PDB files.")
 
+if __name__ == '__main__':
+    test_build()
