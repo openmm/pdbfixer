@@ -5,7 +5,7 @@ install:
     - sudo pip install conda
     - sudo conda init
     - conda config --add channels http://conda.binstar.org/omnia
-    - conda create --yes --name nose setuptools numpy test biopython pyflakes openmm
+    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm
     - export PATH="$HOME/envs/test/bin/:$PATH"
     
 script:
