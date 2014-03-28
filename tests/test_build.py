@@ -4,13 +4,23 @@ from pdbfixer.pdbfixer import *
 import os
 import sys
 
-pdbcodes = ['1PGB', '1VII']
+# These are tough PDB codes from http://www.umass.edu/microbio/chime/pe_beta/pe/protexpl/badpdbs.htm
+pdbcodes = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
+
+# Set up PDB retrieval.
+pdblist = PDBList()
 
 for pdbcode in pdbcodes:
-    pdblist = PDBList()
-    input_pdb_filename = pdblist.retrieve_pdb_file(pdbcode, pdir='.')
+    try:
+        input_pdb_filename = pdblist.retrieve_pdb_file(pdbcode, pdir='.')
+    except:
+        print "Could not download PDB code '%s'" % pdbcode
+        continue
+
     output_pdb_filename = 'output.pdb'
 
+    # PDB setup parameters.
+    # TODO: Try several combinations?
     pH = 7.0
     ionic = 50.0 * unit.millimolar
     box = 10.0 * unit.angstrom
