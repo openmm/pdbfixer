@@ -1,6 +1,4 @@
-language: python
-python:
-  - "2.7"
+language: c
 install:
     - sudo apt-get update -qq
     - sudo apt-get install -qq python-dev python-pip python-yaml python-setuptools g++
@@ -8,6 +6,7 @@ install:
     - sudo conda init
     - conda config --add channels http://conda.binstar.org/omnia
     - conda create --yes --name test numpy biopython pyflakes openmm
+    - source activate test
     - export PATH="$HOME/envs/test/bin/:$PATH"
     
 script:
