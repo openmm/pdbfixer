@@ -7,7 +7,7 @@ import sys
 def test_build():
     # These are tough PDB codes from http://www.umass.edu/microbio/chime/pe_beta/pe/protexpl/badpdbs.htm
     pdbcodes = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
-    pdbcodes = ['1VII'] # DEBUG
+    pdbcodes = ['1VII'] # DEBUG: just use one
 
     # Set up PDB retrieval.
     pdblist = PDBList(server=PDBList.alternative_download_url)
@@ -35,34 +35,22 @@ def test_build():
         positiveIon = 'Na+'
         negativeIon = 'Cl-'
 
-        print "Running PDBFixer..."
         infile = open(input_pdb_filename)
         outfile = open(output_pdb_filename, 'w')
 
         try:
-            print "Creating PDBFixer..."
             fixer = PDBFixer(PdbStructure(infile))
-            print "Finding missing residues..."
             fixer.findMissingResidues()
-            print "Finding nonstandard residues..."
             fixer.findNonstandardResidues()
-            print "Replacing nonstandard residues..."
             fixer.replaceNonstandardResidues()
-            print "Finding missing atoms..."
             fixer.findMissingAtoms()
-            print "Adding missing atoms..."
             fixer.addMissingAtoms()
-            print "Removing heterogens..."
             fixer.removeHeterogens(False)
-            print "Adding missing hydrogens..."
             fixer.addMissingHydrogens(pH)
             #fixer.addSolvent(box*unit.nanometer, positiveIon, negativeIon, ionic*unit.molar)
-            print "Writing PDB file..."
             app.PDBFile.writeFile(fixer.topology, fixer.positions, outfile)
             infile.close()
             outfile.close()
-            print "Done."fg
-            
             
             # Delete input file.
             os.remove(input_pdb_filename)
@@ -74,5 +62,4 @@ def test_build():
 
     if not success:
         raise Exception("build test failed on one or more PDB files.")
-            
-test_build()
+
