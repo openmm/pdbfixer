@@ -44,6 +44,20 @@ import os
 import os.path
 import math
 
+# Imports for urlopen.
+import six # compatibility with Python 2 and 3
+if six.PY3:
+    from urllib.request import urlopen
+    from urllib.parse import urlparse
+    from urllib.parse import (uses_relative, uses_netloc, uses_params)
+else:
+    from urllib2 import urlopen
+    from urlparse import urlparse
+    from urlparse import uses_relative, uses_netloc, uses_params
+
+_VALID_URLS = set(uses_relative + uses_netloc + uses_params)
+_VALID_URLS.discard('')
+
 substitutions = {
     '2AS':'ASP', '3AH':'HIS', '5HP':'GLU', 'ACL':'ARG', 'AGM':'ARG', 'AIB':'ALA', 'ALM':'ALA', 'ALO':'THR', 'ALY':'LYS', 'ARM':'ARG',
     'ASA':'ASP', 'ASB':'ASP', 'ASK':'ASP', 'ASL':'ASP', 'ASQ':'ASP', 'AYA':'ALA', 'BCS':'CYS', 'BHD':'ASP', 'BMT':'THR', 'BNN':'ALA',
@@ -102,7 +116,70 @@ class PDBFixer(object):
         
         Parameters:
          - structure (PdbStructure) the starting PDB structure containing problems to be fixed
+              or a URL, filename, gzipped filename, or PDB code
+
+        Examples:
+        
+        Start from a PdbStructure
+        
+        >>> pdbcode = '1VII'
+        >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbcode
+        >>> file = urlopen(url)
+        >>> structure = PdbStructure(file)
+        >>> fixer = PDBFixer(structure)
+
+        Start from a file object.
+        
+        >>> file = urlopen(url)
+        >>> fixer = PDBFixer(file)
+
+        Start from a filename.
+        
+        >>> filename = 'test.pdb'
+        >>> file = urlopen(url)
+        >>> outfile = open(filename, 'w')
+        >>> outfile.write(file.read())
+        >>> outfile.close()
+        >>> fixer = PDBFixer(filename)
+        
+        Start from a URL.
+
+        >>> fixer = PDBFixer(url)
+
+        Start from a PDB code.
+        
+        >>> fixer = PDBFixer(pdbcode)
+
         """
+        
+        if isinstance(structure, PdbStructure):
+            # We already have a PDB structure; do nothing.
+            pass
+
+        if isinstance(structure, str):
+            # First, try opening it as a local file.
+            if os.path.exists(structure):
+                file = open(structure, 'r')                
+                structure = PdbStructure(file)
+                file.close()
+            
+            # If it's a URL, try that.
+            if self._is_url(structure):
+                file = urlopen(structure)
+                structure = PdbStructure(file)
+                file.close()
+                
+            # If it's a PDB code, try that.
+            if len(structure) == 4:
+                url = 'http://www.rcsb.org/pdb/files/%s.pdb' % structure
+                file = urlopen(url)
+                structure = PdbStructure(file)
+                file.close()
+                
+        # If a file-like object, read it.
+        if hasattr(structure, 'read'):
+            structure = PdbStructure(structure)
+
         self.structure = structure
         self.pdb = app.PDBFile(structure)
         self.topology = self.pdb.topology
@@ -118,6 +195,17 @@ class PDBFixer(object):
             templatePdb = app.PDBFile(os.path.join(templatesPath, file))
             name = next(templatePdb.topology.residues()).name
             self.templates[name] = templatePdb
+
+    @classmethod
+    def _is_url(cls, url):
+        """Check to see if a URL has a valid protocol.
+        from pandas/io.common.py Copyright 2014 Pandas Developers
+        Used under the BSD licence
+        """
+        try:
+            return urlparse(url).scheme in _VALID_URLS
+        except:
+            return False
         
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
         """Create a new Topology in which missing atoms have been added."""
