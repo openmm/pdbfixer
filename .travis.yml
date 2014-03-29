@@ -1,0 +1,17 @@
+language: c
+install:
+    - sudo apt-get update -qq
+    - sudo apt-get install -qq python-dev python-pip python-yaml g++ ftp
+    - sudo pip install conda eventlet
+    - sudo conda init
+    - conda config --add channels http://conda.binstar.org/omnia
+    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm
+    - export PATH="$HOME/envs/test/bin/:$PATH"
+    
+script:
+    - python setup.py install
+    - nosetests tests/test_build_and_simulate.py
+
+after_script:
+    - pyflakes pdbfixer/*.py
+
