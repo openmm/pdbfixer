@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/jchodera/pdbfixer.svg)](https://travis-ci.org/jchodera/pdbfixer)
+[![Build Status](https://travis-ci.org/SimTk/pdbfixer.svg)](https://travis-ci.org/SimTk/pdbfixer)
 
 PDBFixer
 ========
