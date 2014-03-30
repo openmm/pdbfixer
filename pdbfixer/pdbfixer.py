@@ -396,8 +396,19 @@ class PDBFixer(object):
     def removeChains(self, chainIndices):
         """Remove a set of chains from the structure.
         
-        Parameters:
-         - chainIndices (list) the indices of the chains to remove.
+        Parameters
+        ----------
+        chainIndices : list of int
+            List of the indices of the chains to remove.
+
+        Examples
+        --------
+
+        Load a PDB file with two chains and eliminate the second chain.
+
+        >>> fixer = PDBFixer(pdbid='4J7F')
+        >>> fixer.removeChains([1])
+
         """
         modeller = app.Modeller(self.topology, self.positions)
         allChains = list(self.topology.chains())
@@ -412,6 +423,14 @@ class PDBFixer(object):
         The results are stored into the missingResidues field, which is a dict.  Each key is a tuple consisting of
         the index of a chain, and the residue index within that chain at which new residues should be inserted.
         The corresponding value is a list of the names of residues to insert there.
+
+        Examples
+        --------
+
+        >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.findMissingResidues()
+        >>> missing_residues = fixer.missingResidues
+
         """
         chains = [c for c in self.structureChains if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
         chainWithGaps = {}
@@ -470,6 +489,16 @@ class PDBFixer(object):
         
         The results are stored into the nonstandardResidues field, which is a map of Residue objects to the names
         of suggested replacement residues.
+
+        Examples
+        --------
+
+        Find nonstandard residues.
+
+        >>> fixer = PDBFixer(pdbid='1YRI')
+        >>> fixer.findNonstandardResidues()
+        >>> nonstandard_residues = fixer.nonstandardResidues        
+
         """
         
         # First find residues based on our table of standard substitutions.
@@ -491,7 +520,22 @@ class PDBFixer(object):
         self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
     
     def replaceNonstandardResidues(self):
-        """Replace every residue listed in the nonstandardResidues field with the specified standard residue."""
+        """Replace every residue listed in the nonstandardResidues field with the specified standard residue.
+
+        Notes
+        -----
+        You must have first called findNonstandardResidues() to identify nonstandard residues.
+
+        Examples
+        --------
+
+        Find and replace nonstandard residues using replacement templates stored in the 'templates' field of PDBFixer object.
+
+        >>> fixer = PDBFixer(pdbid='1YRI')
+        >>> fixer.findNonstandardResidues()
+        >>> fixer.replaceNonstandardResidues()
+
+        """
         if len(self.nonstandardResidues) > 0:
             deleteAtoms = []
 
@@ -519,6 +563,24 @@ class PDBFixer(object):
         are Residue objects and whose values are lists of atom names.  missingAtoms contains standard atoms that should
         be present in any residue of that type.  missingTerminals contains terminal atoms that should be present at the
         start or end of a chain.
+
+        Notes
+        -----
+        You must have first called findMissingResidues().
+
+        Examples
+        --------
+        
+        Find missing heavy atoms in Abl kinase structure.
+        
+        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> # Retrieve missing atoms.
+        >>> missingAtoms = fixer.missingAtoms
+        >>> # Retrieve missing terminal atoms.
+        >>> missingTerminals = fixer.missingTerminals
+        
         """
         missingAtoms = {}
         missingTerminals = {}
@@ -557,7 +619,23 @@ class PDBFixer(object):
         self.missingTerminals = missingTerminals
     
     def addMissingAtoms(self):
-        """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields."""
+        """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields.
+
+        Notes
+        -----
+        You must already have called findMissingAtoms() to have identified atoms to be added.
+        
+        Examples
+        --------
+        
+        Find missing heavy atoms in Abl kinase structure.
+        
+        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> fixer.addMissingAtoms()
+
+        """
         
         # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
         
@@ -624,12 +702,24 @@ class PDBFixer(object):
             self.topology = newTopology2
             self.positions = newPositions2
     
-    def removeHeterogens(self, keepWater):
+    def removeHeterogens(self, keepWater=True):
         """Remove all heterogens from the structure.
         
-        Parameters:
-         - keepWater (bool) if True, water molecules will not be removed
+        Parameters
+        ----------
+        keepWater : bool, optional, default=True
+            If True, water molecules will not be removed.
+
+        Examples
+        --------
+
+        Remove heterogens in Abl structure complexed with imatinib.
+
+        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer.removeHeterogens(keepWater=False)
+
         """
+
         keep = set(proteinResidues).union(dnaResidues).union(rnaResidues)
         keep.add('N')
         keep.add('UNK')
@@ -644,30 +734,68 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
     
-    def addMissingHydrogens(self, pH):
+    def addMissingHydrogens(self, pH=7.0):
         """Add missing hydrogen atoms to the structure.
         
-        Parameters:
-         - pH (float) the pH based on which to select hydrogens
+        Parameters
+        ----------
+        pH : float, optional, default=7.0
+            The pH based on which to select hydrogens.
+
+        Notes
+        -----
+        No extensive electrostatic analysis is performed; only default residue pKas are used.
+
+        Examples
+        --------
+
+        Examples
+        --------
+
+        Add missing hydrogens appropriate for pH 8.
+
+        >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.addMissingHydrogens(pH=8.0)
+
         """
         modeller = app.Modeller(self.topology, self.positions)
         modeller.addHydrogens(pH=pH)
         self.topology = modeller.topology
         self.positions = modeller.positions
     
-    def addSolvent(self, boxSize, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
+    def addSolvent(self, boxSize=None, padding=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
         """Add a solvent box surrounding the structure.
         
-        Parameters:
-         - boxSize (Vec3) the size of the box to fill with water
-         - positiveIon (string='Na+') the type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'
-         - negativeIon (string='Cl-') the type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'
-         - ionicString (concentration=0*molar) the total concentration of ions (both positive and negative) to add.  This
-           does not include ions that are added to neutralize the system.
+        Parameters
+        ----------
+        boxSize : simtk.openmm.Vec3, optional, default=None
+            The size of the box to fill with water.  If specified, padding must not be specified.
+        padding : simtk.unit.Quantity compatible with nanometers, optional, default=None
+            Padding around macromolecule for filling box with water.  If specified, boxSize must not be specified.
+        positiveIon : str, optional, default='Na+'
+            The type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'.
+        negativeIon : str, optional, default='Cl-'
+            The type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'.
+        ionicStrength : simtk.unit.Quantity with units compatible with molar, optional, default=0*molar 
+            The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
+            
+        Examples
+        --------
+
+        Add missing residues, heavy atoms, and hydrogens, and then solvate with 10 A padding.
+
+        >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> fixer.addMissingAtoms()
+        >>> fixer.addMissingHydrogens(pH=8.0)
+        >>> fixer.addSolvent(padding=10*unit.angstrom, ionicStrength=0.050*unit.molar)
+
         """
+
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
-        modeller.addSolvent(forcefield, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
         self.topology = modeller.topology
         self.positions = modeller.positions
     
