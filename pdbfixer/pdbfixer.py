@@ -58,6 +58,16 @@ else:
 _VALID_URLS = set(uses_relative + uses_netloc + uses_params)
 _VALID_URLS.discard('')
 
+def _is_url(url):
+    """Check to see if a URL has a valid protocol.
+    from pandas/io.common.py Copyright 2014 Pandas Developers
+    Used under the BSD licence
+    """
+    try:
+        return urlparse(url).scheme in _VALID_URLS
+    except:
+        return False
+        
 substitutions = {
     '2AS':'ASP', '3AH':'HIS', '5HP':'GLU', 'ACL':'ARG', 'AGM':'ARG', 'AIB':'ALA', 'ALM':'ALA', 'ALO':'THR', 'ALY':'LYS', 'ARM':'ARG',
     'ASA':'ASP', 'ASB':'ASP', 'ASK':'ASP', 'ASL':'ASP', 'ASQ':'ASP', 'AYA':'ALA', 'BCS':'CYS', 'BHD':'ASP', 'BMT':'THR', 'BNN':'ALA',
@@ -157,27 +167,24 @@ class PDBFixer(object):
             pass
 
         if isinstance(structure, str):
-            # First, try opening it as a local file.
             if os.path.exists(structure):
+                # First, try opening it as a local file.
                 file = open(structure, 'r')                
                 structure = PdbStructure(file)
                 file.close()
-            
-            # If it's a URL, try that.
-            if self._is_url(structure):
+            elif _is_url(structure):            
+                # If it's a URL, try that.
                 file = urlopen(structure)
                 structure = PdbStructure(file)
                 file.close()
-                
-            # If it's a PDB code, try that.
-            if len(structure) == 4:
+            elif len(structure) == 4:                
+                # If it's a PDB code, try that.
                 url = 'http://www.rcsb.org/pdb/files/%s.pdb' % structure
                 file = urlopen(url)
                 structure = PdbStructure(file)
                 file.close()
-                
-        # If a file-like object, read it.
-        if hasattr(structure, 'read'):
+        elif hasattr(structure, 'read'):                
+            # If a file-like object, read it.
             structure = PdbStructure(structure)
 
         self.structure = structure
@@ -196,17 +203,6 @@ class PDBFixer(object):
             name = next(templatePdb.topology.residues()).name
             self.templates[name] = templatePdb
 
-    @classmethod
-    def _is_url(cls, url):
-        """Check to see if a URL has a valid protocol.
-        from pandas/io.common.py Copyright 2014 Pandas Developers
-        Used under the BSD licence
-        """
-        try:
-            return urlparse(url).scheme in _VALID_URLS
-        except:
-            return False
-        
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
         """Create a new Topology in which missing atoms have been added."""
         
@@ -740,7 +736,7 @@ def main():
             parser.error('No filename specified')
         if len(args) > 1:
             parser.error('Must specify a single filename')
-        fixer = PDBFixer(PdbStructure(open(args[0])))
+        fixer = PDBFixer(argv[0])
         if options.residues:
             fixer.findMissingResidues()
         else:

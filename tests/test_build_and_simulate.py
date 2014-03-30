@@ -1,7 +1,6 @@
 
 import pdbfixer
 import simtk.openmm 
-import Bio.PDB
 
 import os
 import os.path
@@ -87,28 +86,14 @@ def test_build_and_simulate():
     pdbcodes_to_build = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
     pdbcodes_to_simulate = ['1AS5', '1CBN', '1DPO', '1IGY', '1HAG', '1IAO', '4CPA', '1QCQ']
 
-    # Set up PDB retrieval.
-    from Bio.PDB import PDBList
-    pdblist = PDBList(server=PDBList.alternative_download_url)
+    # DEBUG: Simpler test cases.
+    pdbcodes_to_build = ['1AS5', '1VII']
+    pdbcodes_to_simulate = ['1AS5', '1VII']
 
     success = True
 
     for pdbcode in pdbcodes_to_build:
         print pdbcode
-
-        try:
-            # Remove file if it exists already.
-            input_pdb_filename = 'pdb' + pdbcode + '.ent'
-            if os.path.exists(input_pdb_filename):  
-                os.remove(input_pdb_filename)                
-
-            print "Attempting to retrieve PDB code '%s' from %s..." % (pdbcode, PDBList.alternative_download_url)
-            input_pdb_filename = pdblist.retrieve_pdb_file(pdbcode, pdir='.')
-
-        except Exception as e:
-            print str(e)
-            print "Could not download PDB code '%s'" % pdbcode
-            continue
 
         output_pdb_filename = 'output.pdb'
 
@@ -121,10 +106,10 @@ def test_build_and_simulate():
         positiveIon = 'Na+'
         negativeIon = 'Cl-'
 
-        infile = open(input_pdb_filename)
-        outfile = open(output_pdb_filename, 'w')
         
         success = True
+
+        outfile = open(output_pdb_filename, 'w')
 
         timeout_seconds = 0.1
         watchdog = Watchdog(timeout_seconds)
@@ -132,7 +117,7 @@ def test_build_and_simulate():
             from pdbfixer.pdbfixer import PDBFixer, PdbStructure
             from simtk.openmm import app
             stage = "Creating PDBFixer..."
-            fixer = PDBFixer(PdbStructure(infile))
+            fixer = PDBFixer(pdbcode)
             stage = "Finding missing residues..."
             fixer.findMissingResidues()
             stage = "Finding nonstandard residues..."
@@ -150,7 +135,6 @@ def test_build_and_simulate():
             stage = "Writing PDB file..."
             app.PDBFile.writeFile(fixer.topology, fixer.positions, outfile)
             stage = "Done."
-            infile.close()
             outfile.close()
 
         except Watchdog:
@@ -182,7 +166,6 @@ def test_build_and_simulate():
             del watchdog
 
         # Clean up.
-        os.remove(input_pdb_filename)
         os.remove(output_pdb_filename)
 
     if not success:
