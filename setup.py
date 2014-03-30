@@ -111,9 +111,7 @@ setup(
     packages=find_packages(),
     package_data={'pdbfixer': find_package_data()},
     zip_safe=False,
-    install_requires=[
-        'six',
-        ],
+    install_requires=[],
     entry_points={'console_scripts': ['pdbfixer = pdbfixer.pdbfixer:main']})
 
 check_dependencies()

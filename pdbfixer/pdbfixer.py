@@ -44,29 +44,11 @@ import os
 import os.path
 import math
 
-# Imports for urlopen.
-import six # compatibility with Python 2 and 3
-if six.PY3:
+# Imports for urlopen
+if sys.version_info >= (3,0):
     from urllib.request import urlopen
-    from urllib.parse import urlparse
-    from urllib.parse import (uses_relative, uses_netloc, uses_params)
 else:
     from urllib2 import urlopen
-    from urlparse import urlparse
-    from urlparse import uses_relative, uses_netloc, uses_params
-
-_VALID_URLS = set(uses_relative + uses_netloc + uses_params)
-_VALID_URLS.discard('')
-
-def _is_url(url):
-    """Check to see if a URL has a valid protocol.
-    from pandas/io.common.py Copyright 2014 Pandas Developers
-    Used under the BSD licence
-    """
-    try:
-        return urlparse(url).scheme in _VALID_URLS
-    except:
-        return False
         
 substitutions = {
     '2AS':'ASP', '3AH':'HIS', '5HP':'GLU', 'ACL':'ARG', 'AGM':'ARG', 'AIB':'ALA', 'ALM':'ALA', 'ALO':'THR', 'ALY':'LYS', 'ARM':'ARG',
@@ -90,8 +72,23 @@ dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
 
 def _overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
-    
-    This is based on W. Kabsch, Acta Cryst., A34, pp. 828-829 (1978)."""
+
+    Parameters
+    ----------
+    points1 (numpy array of simtk.unit.Quantity with units compatible with distance) - reference set of coordinates
+    points2 (numpy array of simtk.unit.Quantity with units compatible with distance) - set of coordinates to be rotated
+
+    Returns
+    -------
+    translate2 - vector to translate points2 by in order to center it
+    rotate - rotation matrix to apply to centered points2 to map it on to points1
+    center1 - center of points1
+
+    Notes
+    -----    
+    This is based on W. Kabsch, Acta Cryst., A34, pp. 828-829 (1978).
+
+    """
     
     if len(points1) == 0:
         return (Vec3(0, 0, 0), np.identity(3), Vec3(0, 0, 0))
@@ -119,29 +116,45 @@ def _overlayPoints(points1, points2):
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
 class PDBFixer(object):
-    """PDBFixer implements many tools for fixing problems in PDB files."""
+    """PDBFixer implements many tools for fixing problems in PDB files.
+    """
     
-    def __init__(self, structure):
-        """Create a new PDBFixer to fix problems in a PDB file.
+    def __init__(self, structure=None, filename=None, file=None, url=None, pdbid=None):
+        """Create a new PDBFixer instance to fix problems in a PDB file.
         
-        Parameters:
-         - structure (PdbStructure) the starting PDB structure containing problems to be fixed
-              or a URL, filename, gzipped filename, or PDB code
-
-        Examples:
+        Parameters
+        ----------
+        structure : PdbStructure, optional, default=None
+            A PdbStructure object containing the PDB file to be repaired.
+        filename : str, optional, default=None
+            A filename specifying the file from which the PDB file is to be read.
+        file : file, optional, default=None
+            A file-like object from which the PDB file is to be read.
+            The file is not closed after reading.
+        url : str, optional, default=None
+            A URL specifying the internet location from which the PDB file contents should be retrieved.
+        pdbid : str, optional, default=None
+            A four-letter PDB code specifying the structure to be retrieved from the RCSB.
+            
+        Notes
+        -----
+        Only one of structure, filename, file, url, or pdbid may be specified or an exception will be thrown.
+            
+        Examples
+        --------
         
         Start from a PdbStructure
         
-        >>> pdbcode = '1VII'
-        >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbcode
+        >>> pdbid = '1VII'
+        >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
         >>> file = urlopen(url)
         >>> structure = PdbStructure(file)
-        >>> fixer = PDBFixer(structure)
+        >>> fixer = PDBFixer(structure=structure)
 
         Start from a file object.
         
         >>> file = urlopen(url)
-        >>> fixer = PDBFixer(file)
+        >>> fixer = PDBFixer(file=file)
 
         Start from a filename.
         
@@ -150,43 +163,53 @@ class PDBFixer(object):
         >>> outfile = open(filename, 'w')
         >>> outfile.write(file.read())
         >>> outfile.close()
-        >>> fixer = PDBFixer(filename)
+        >>> fixer = PDBFixer(filename=filename)
         
         Start from a URL.
 
-        >>> fixer = PDBFixer(url)
+        >>> fixer = PDBFixer(url=url)
 
         Start from a PDB code.
         
-        >>> fixer = PDBFixer(pdbcode)
+        >>> fixer = PDBFixer(pdbid=pdbid)
 
         """
         
-        if isinstance(structure, PdbStructure):
-            # We already have a PDB structure; do nothing.
+        # Check to make sure only one option has been specified.
+        if bool(structure) + bool(filename) + bool(file) + bool(url) + bool(pdbid) != 1:
+            raise Exception("Exactly one option [structure, filename, file, url, pdbid] must be specified.")
+
+        if structure:
+            # A PDB structure has been specified; do nothing.
             pass
-
-        if isinstance(structure, str):
-            if os.path.exists(structure):
-                # First, try opening it as a local file.
-                file = open(structure, 'r')                
-                structure = PdbStructure(file)
-                file.close()
-            elif _is_url(structure):            
-                # If it's a URL, try that.
-                file = urlopen(structure)
-                structure = PdbStructure(file)
-                file.close()
-            elif len(structure) == 4:                
-                # If it's a PDB code, try that.
-                url = 'http://www.rcsb.org/pdb/files/%s.pdb' % structure
-                file = urlopen(url)
-                structure = PdbStructure(file)
-                file.close()
-        elif hasattr(structure, 'read'):                
-            # If a file-like object, read it.
-            structure = PdbStructure(structure)
-
+        elif filename:
+            # A local file has been specified.
+            file = open(filename, 'r')                
+            structure = PdbStructure(file)
+            file.close()
+        elif file:
+            # A file-like object has been specified.
+            structure = PdbStructure(file)  
+        elif url:
+            # A URL has been specified.
+            file = urlopen(url)
+            structure = PdbStructure(file)
+            file.close()
+        elif pdbid:
+            # A PDB id has been specified.
+            url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
+            file = urlopen(url)
+            # Read contents all at once and split into lines, since urlopen doesn't like it when we read one line at a time over the network.
+            contents = file.read()
+            lines = contents.split('\n')
+            file.close()
+            structure = PdbStructure(lines)
+            
+        # Check the structure has some atoms in it.
+        atoms = list(structure.iter_atoms())
+        if len(atoms)==0:
+            raise Exception("Structure contains no atoms.")
+            
         self.structure = structure
         self.pdb = app.PDBFile(structure)
         self.topology = self.pdb.topology
@@ -202,9 +225,31 @@ class PDBFixer(object):
             templatePdb = app.PDBFile(os.path.join(templatesPath, file))
             name = next(templatePdb.topology.residues()).name
             self.templates[name] = templatePdb
+        
+        return
 
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
-        """Create a new Topology in which missing atoms have been added."""
+        """Create a new Topology in which missing atoms have been added.
+
+        Parameters
+        ----------
+        heavyAtomsOnly : bool
+            If True, only heavy atoms will be added to the topology.
+        omitUnknownMolecules : bool
+            If True, unknown molecules will be omitted from the topology.
+
+        Returns
+        -------
+        newTopology : simtk.openmm.app.Topology
+            A new Topology object containing atoms from the old.         
+        newPositions : list of simtk.unit.Quantity with units compatible with nanometers
+            Atom positions for the new Topology object.
+        newAtoms : simtk.openmm.app.Topology.Atom
+            New atom objects.
+        existingAtomMap : dict
+            Mapping from old atoms to new atoms.
+
+        """
         
         newTopology = app.Topology()
         newPositions = []*unit.nanometer
