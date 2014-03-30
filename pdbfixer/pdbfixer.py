@@ -781,7 +781,7 @@ def main():
             parser.error('No filename specified')
         if len(args) > 1:
             parser.error('Must specify a single filename')
-        fixer = PDBFixer(argv[0])
+        fixer = PDBFixer(filename=argv[0])
         if options.residues:
             fixer.findMissingResidues()
         else:
