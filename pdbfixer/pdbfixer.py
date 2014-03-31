@@ -119,13 +119,11 @@ class PDBFixer(object):
     """PDBFixer implements many tools for fixing problems in PDB files.
     """
     
-    def __init__(self, structure=None, filename=None, file=None, url=None, pdbid=None):
+    def __init__(self, filename=None, file=None, url=None, pdbid=None):
         """Create a new PDBFixer instance to fix problems in a PDB file.
         
         Parameters
         ----------
-        structure : PdbStructure, optional, default=None
-            A PdbStructure object containing the PDB file to be repaired.
         filename : str, optional, default=None
             A filename specifying the file from which the PDB file is to be read.
         file : file, optional, default=None
@@ -143,16 +141,10 @@ class PDBFixer(object):
         Examples
         --------
         
-        Start from a PdbStructure
-        
+        Start from a file object.
+
         >>> pdbid = '1VII'
         >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
-        >>> file = urlopen(url)
-        >>> structure = PdbStructure(file)
-        >>> fixer = PDBFixer(structure=structure)
-
-        Start from a file object.
-        
         >>> file = urlopen(url)
         >>> fixer = PDBFixer(file=file)
 
@@ -176,13 +168,10 @@ class PDBFixer(object):
         """
         
         # Check to make sure only one option has been specified.
-        if bool(structure) + bool(filename) + bool(file) + bool(url) + bool(pdbid) != 1:
-            raise Exception("Exactly one option [structure, filename, file, url, pdbid] must be specified.")
+        if bool(filename) + bool(file) + bool(url) + bool(pdbid) != 1:
+            raise Exception("Exactly one option [filename, file, url, pdbid] must be specified.")
 
-        if structure:
-            # A PDB structure has been specified; do nothing.
-            pass
-        elif filename:
+        if filename:
             # A local file has been specified.
             file = open(filename, 'r')                
             structure = PdbStructure(file)
