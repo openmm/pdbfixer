@@ -44,6 +44,12 @@ import os
 import os.path
 import math
 
+# Imports for urlopen
+if sys.version_info >= (3,0):
+    from urllib.request import urlopen
+else:
+    from urllib2 import urlopen
+        
 substitutions = {
     '2AS':'ASP', '3AH':'HIS', '5HP':'GLU', 'ACL':'ARG', 'AGM':'ARG', 'AIB':'ALA', 'ALM':'ALA', 'ALO':'THR', 'ALY':'LYS', 'ARM':'ARG',
     'ASA':'ASP', 'ASB':'ASP', 'ASK':'ASP', 'ASL':'ASP', 'ASQ':'ASP', 'AYA':'ALA', 'BCS':'CYS', 'BHD':'ASP', 'BMT':'THR', 'BNN':'ALA',
@@ -66,8 +72,23 @@ dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
 
 def _overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
-    
-    This is based on W. Kabsch, Acta Cryst., A34, pp. 828-829 (1978)."""
+
+    Parameters
+    ----------
+    points1 (numpy array of simtk.unit.Quantity with units compatible with distance) - reference set of coordinates
+    points2 (numpy array of simtk.unit.Quantity with units compatible with distance) - set of coordinates to be rotated
+
+    Returns
+    -------
+    translate2 - vector to translate points2 by in order to center it
+    rotate - rotation matrix to apply to centered points2 to map it on to points1
+    center1 - center of points1
+
+    Notes
+    -----    
+    This is based on W. Kabsch, Acta Cryst., A34, pp. 828-829 (1978).
+
+    """
     
     if len(points1) == 0:
         return (Vec3(0, 0, 0), np.identity(3), Vec3(0, 0, 0))
@@ -95,14 +116,89 @@ def _overlayPoints(points1, points2):
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
 class PDBFixer(object):
-    """PDBFixer implements many tools for fixing problems in PDB files."""
+    """PDBFixer implements many tools for fixing problems in PDB files.
+    """
     
-    def __init__(self, structure):
-        """Create a new PDBFixer to fix problems in a PDB file.
+    def __init__(self, filename=None, file=None, url=None, pdbid=None):
+        """Create a new PDBFixer instance to fix problems in a PDB file.
         
-        Parameters:
-         - structure (PdbStructure) the starting PDB structure containing problems to be fixed
+        Parameters
+        ----------
+        filename : str, optional, default=None
+            A filename specifying the file from which the PDB file is to be read.
+        file : file, optional, default=None
+            A file-like object from which the PDB file is to be read.
+            The file is not closed after reading.
+        url : str, optional, default=None
+            A URL specifying the internet location from which the PDB file contents should be retrieved.
+        pdbid : str, optional, default=None
+            A four-letter PDB code specifying the structure to be retrieved from the RCSB.
+            
+        Notes
+        -----
+        Only one of structure, filename, file, url, or pdbid may be specified or an exception will be thrown.
+            
+        Examples
+        --------
+        
+        Start from a file object.
+
+        >>> pdbid = '1VII'
+        >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
+        >>> file = urlopen(url)
+        >>> fixer = PDBFixer(file=file)
+
+        Start from a filename.
+        
+        >>> filename = 'test.pdb'
+        >>> file = urlopen(url)
+        >>> outfile = open(filename, 'w')
+        >>> outfile.write(file.read())
+        >>> outfile.close()
+        >>> fixer = PDBFixer(filename=filename)
+        
+        Start from a URL.
+
+        >>> fixer = PDBFixer(url=url)
+
+        Start from a PDB code.
+        
+        >>> fixer = PDBFixer(pdbid=pdbid)
+
         """
+        
+        # Check to make sure only one option has been specified.
+        if bool(filename) + bool(file) + bool(url) + bool(pdbid) != 1:
+            raise Exception("Exactly one option [filename, file, url, pdbid] must be specified.")
+
+        if filename:
+            # A local file has been specified.
+            file = open(filename, 'r')                
+            structure = PdbStructure(file)
+            file.close()
+        elif file:
+            # A file-like object has been specified.
+            structure = PdbStructure(file)  
+        elif url:
+            # A URL has been specified.
+            file = urlopen(url)
+            structure = PdbStructure(file)
+            file.close()
+        elif pdbid:
+            # A PDB id has been specified.
+            url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
+            file = urlopen(url)
+            # Read contents all at once and split into lines, since urlopen doesn't like it when we read one line at a time over the network.
+            contents = file.read()
+            lines = contents.split('\n')
+            file.close()
+            structure = PdbStructure(lines)
+            
+        # Check the structure has some atoms in it.
+        atoms = list(structure.iter_atoms())
+        if len(atoms)==0:
+            raise Exception("Structure contains no atoms.")
+            
         self.structure = structure
         self.pdb = app.PDBFile(structure)
         self.topology = self.pdb.topology
@@ -119,8 +215,30 @@ class PDBFixer(object):
             name = next(templatePdb.topology.residues()).name
             self.templates[name] = templatePdb
         
+        return
+
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
-        """Create a new Topology in which missing atoms have been added."""
+        """Create a new Topology in which missing atoms have been added.
+
+        Parameters
+        ----------
+        heavyAtomsOnly : bool
+            If True, only heavy atoms will be added to the topology.
+        omitUnknownMolecules : bool
+            If True, unknown molecules will be omitted from the topology.
+
+        Returns
+        -------
+        newTopology : simtk.openmm.app.Topology
+            A new Topology object containing atoms from the old.         
+        newPositions : list of simtk.unit.Quantity with units compatible with nanometers
+            Atom positions for the new Topology object.
+        newAtoms : simtk.openmm.app.Topology.Atom
+            New atom objects.
+        existingAtomMap : dict
+            Mapping from old atoms to new atoms.
+
+        """
         
         newTopology = app.Topology()
         newPositions = []*unit.nanometer
@@ -267,8 +385,19 @@ class PDBFixer(object):
     def removeChains(self, chainIndices):
         """Remove a set of chains from the structure.
         
-        Parameters:
-         - chainIndices (list) the indices of the chains to remove.
+        Parameters
+        ----------
+        chainIndices : list of int
+            List of the indices of the chains to remove.
+
+        Examples
+        --------
+
+        Load a PDB file with two chains and eliminate the second chain.
+
+        >>> fixer = PDBFixer(pdbid='4J7F')
+        >>> fixer.removeChains([1])
+
         """
         modeller = app.Modeller(self.topology, self.positions)
         allChains = list(self.topology.chains())
@@ -283,6 +412,14 @@ class PDBFixer(object):
         The results are stored into the missingResidues field, which is a dict.  Each key is a tuple consisting of
         the index of a chain, and the residue index within that chain at which new residues should be inserted.
         The corresponding value is a list of the names of residues to insert there.
+
+        Examples
+        --------
+
+        >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.findMissingResidues()
+        >>> missing_residues = fixer.missingResidues
+
         """
         chains = [c for c in self.structureChains if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
         chainWithGaps = {}
@@ -341,6 +478,16 @@ class PDBFixer(object):
         
         The results are stored into the nonstandardResidues field, which is a map of Residue objects to the names
         of suggested replacement residues.
+
+        Examples
+        --------
+
+        Find nonstandard residues.
+
+        >>> fixer = PDBFixer(pdbid='1YRI')
+        >>> fixer.findNonstandardResidues()
+        >>> nonstandard_residues = fixer.nonstandardResidues        
+
         """
         
         # First find residues based on our table of standard substitutions.
@@ -362,7 +509,22 @@ class PDBFixer(object):
         self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
     
     def replaceNonstandardResidues(self):
-        """Replace every residue listed in the nonstandardResidues field with the specified standard residue."""
+        """Replace every residue listed in the nonstandardResidues field with the specified standard residue.
+
+        Notes
+        -----
+        You must have first called findNonstandardResidues() to identify nonstandard residues.
+
+        Examples
+        --------
+
+        Find and replace nonstandard residues using replacement templates stored in the 'templates' field of PDBFixer object.
+
+        >>> fixer = PDBFixer(pdbid='1YRI')
+        >>> fixer.findNonstandardResidues()
+        >>> fixer.replaceNonstandardResidues()
+
+        """
         if len(self.nonstandardResidues) > 0:
             deleteAtoms = []
 
@@ -390,6 +552,24 @@ class PDBFixer(object):
         are Residue objects and whose values are lists of atom names.  missingAtoms contains standard atoms that should
         be present in any residue of that type.  missingTerminals contains terminal atoms that should be present at the
         start or end of a chain.
+
+        Notes
+        -----
+        You must have first called findMissingResidues().
+
+        Examples
+        --------
+        
+        Find missing heavy atoms in Abl kinase structure.
+        
+        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> # Retrieve missing atoms.
+        >>> missingAtoms = fixer.missingAtoms
+        >>> # Retrieve missing terminal atoms.
+        >>> missingTerminals = fixer.missingTerminals
+        
         """
         missingAtoms = {}
         missingTerminals = {}
@@ -428,7 +608,23 @@ class PDBFixer(object):
         self.missingTerminals = missingTerminals
     
     def addMissingAtoms(self):
-        """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields."""
+        """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields.
+
+        Notes
+        -----
+        You must already have called findMissingAtoms() to have identified atoms to be added.
+        
+        Examples
+        --------
+        
+        Find missing heavy atoms in Abl kinase structure.
+        
+        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> fixer.addMissingAtoms()
+
+        """
         
         # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
         
@@ -495,12 +691,24 @@ class PDBFixer(object):
             self.topology = newTopology2
             self.positions = newPositions2
     
-    def removeHeterogens(self, keepWater):
+    def removeHeterogens(self, keepWater=True):
         """Remove all heterogens from the structure.
         
-        Parameters:
-         - keepWater (bool) if True, water molecules will not be removed
+        Parameters
+        ----------
+        keepWater : bool, optional, default=True
+            If True, water molecules will not be removed.
+
+        Examples
+        --------
+
+        Remove heterogens in Abl structure complexed with imatinib.
+
+        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer.removeHeterogens(keepWater=False)
+
         """
+
         keep = set(proteinResidues).union(dnaResidues).union(rnaResidues)
         keep.add('N')
         keep.add('UNK')
@@ -515,30 +723,68 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
     
-    def addMissingHydrogens(self, pH):
+    def addMissingHydrogens(self, pH=7.0):
         """Add missing hydrogen atoms to the structure.
         
-        Parameters:
-         - pH (float) the pH based on which to select hydrogens
+        Parameters
+        ----------
+        pH : float, optional, default=7.0
+            The pH based on which to select hydrogens.
+
+        Notes
+        -----
+        No extensive electrostatic analysis is performed; only default residue pKas are used.
+
+        Examples
+        --------
+
+        Examples
+        --------
+
+        Add missing hydrogens appropriate for pH 8.
+
+        >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.addMissingHydrogens(pH=8.0)
+
         """
         modeller = app.Modeller(self.topology, self.positions)
         modeller.addHydrogens(pH=pH)
         self.topology = modeller.topology
         self.positions = modeller.positions
     
-    def addSolvent(self, boxSize, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
+    def addSolvent(self, boxSize=None, padding=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
         """Add a solvent box surrounding the structure.
         
-        Parameters:
-         - boxSize (Vec3) the size of the box to fill with water
-         - positiveIon (string='Na+') the type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'
-         - negativeIon (string='Cl-') the type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'
-         - ionicString (concentration=0*molar) the total concentration of ions (both positive and negative) to add.  This
-           does not include ions that are added to neutralize the system.
+        Parameters
+        ----------
+        boxSize : simtk.openmm.Vec3, optional, default=None
+            The size of the box to fill with water.  If specified, padding must not be specified.
+        padding : simtk.unit.Quantity compatible with nanometers, optional, default=None
+            Padding around macromolecule for filling box with water.  If specified, boxSize must not be specified.
+        positiveIon : str, optional, default='Na+'
+            The type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'.
+        negativeIon : str, optional, default='Cl-'
+            The type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'.
+        ionicStrength : simtk.unit.Quantity with units compatible with molar, optional, default=0*molar 
+            The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
+            
+        Examples
+        --------
+
+        Add missing residues, heavy atoms, and hydrogens, and then solvate with 10 A padding.
+
+        >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> fixer.addMissingAtoms()
+        >>> fixer.addMissingHydrogens(pH=8.0)
+        >>> fixer.addSolvent(padding=10*unit.angstrom, ionicStrength=0.050*unit.molar)
+
         """
+
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
-        modeller.addSolvent(forcefield, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
         self.topology = modeller.topology
         self.positions = modeller.positions
     
@@ -652,7 +898,7 @@ def main():
             parser.error('No filename specified')
         if len(args) > 1:
             parser.error('Must specify a single filename')
-        fixer = PDBFixer(PdbStructure(open(args[0])))
+        fixer = PDBFixer(filename=argv[0])
         if options.residues:
             fixer.findMissingResidues()
         else:
