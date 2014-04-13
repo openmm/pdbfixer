@@ -34,6 +34,7 @@ __version__ = "1.0"
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
+from simtk.openmm import Vec3
 from simtk.openmm.app.internal.pdbstructure import PdbStructure
 from simtk.openmm.app.element import hydrogen, oxygen
 from simtk.openmm.app.forcefield import NonbondedGenerator
