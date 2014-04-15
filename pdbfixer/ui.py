@@ -26,25 +26,21 @@ def controlsCallback(parameters, handler):
     if 'quit' in parameters:
         handler.sendResponse(loadHtmlFile("quit.html"))
         uiserver.server.shutdown()
+        global uiIsRunning
+        uiIsRunning = False
 
 def startPageCallback(parameters, handler):
     global fixer
     if 'type' in parameters:
         if parameters.getfirst('type') == 'local':
-            pdb = PdbStructure(parameters['pdbfile'].value.decode().splitlines())
-            fixer = PDBFixer(pdb)
-            displayDeleteChainsPage()
+            fixer = PDBFixer(file=parameters['pdbfile'].value.decode().splitlines())
         else:
             id = parameters.getfirst('pdbid')
-            url = "ftp://ftp.wwpdb.org/pub/pdb/data/structures/all/pdb/pdb"+id.lower()+".ent.gz"
             try:
-                response = urlopen(url)
-                content = gzip.GzipFile(fileobj=BytesIO(response.read())).read()
-                pdb = PdbStructure(content.decode().splitlines())
-                fixer = PDBFixer(pdb)
-                displayDeleteChainsPage()
+                fixer = PDBFixer(pdbid=id)
             except:
                 handler.sendResponse(header+"Unable to download the PDB file. This may indicate an invalid PDB identifier, or an error in network connectivity."+loadHtmlFile("error.html"))
+        displayDeleteChainsPage()
 
 def deleteChainsPageCallback(parameters, handler):
     numChains = len(list(fixer.topology.chains()))
@@ -215,5 +211,8 @@ def launchUI():
     # down and then the uiserver exits. Without this daemon/sleep combo, the
     # process cannot be killed with Control-C. Reference stack overflow link:
     # http://stackoverflow.com/a/11816038/1079728
-    while True:
+    
+    global uiIsRunning
+    uiIsRunning = True
+    while uiIsRunning:
         time.sleep(0.5)
