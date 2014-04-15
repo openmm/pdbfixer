@@ -6,7 +6,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2013 Stanford University and the Authors.
+Portions copyright (c) 2013-2014 Stanford University and the Authors.
 Authors: Peter Eastman
 Contributors:
 
@@ -91,7 +91,7 @@ def _overlayPoints(points1, points2):
     """
     
     if len(points1) == 0:
-        return (Vec3(0, 0, 0), np.identity(3), Vec3(0, 0, 0))
+        return (mm.Vec3(0, 0, 0), np.identity(3), mm.Vec3(0, 0, 0))
     if len(points1) == 1:
         return (points1[0], np.identity(3), -1*points2[0])
     
@@ -898,7 +898,7 @@ def main():
             parser.error('No filename specified')
         if len(args) > 1:
             parser.error('Must specify a single filename')
-        fixer = PDBFixer(filename=argv[0])
+        fixer = PDBFixer(filename=sys.argv[1])
         if options.residues:
             fixer.findMissingResidues()
         else:
