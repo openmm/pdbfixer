@@ -35,11 +35,11 @@ def simulate(pdbcode, pdb_filename):
 
     # Load the PDB file.
     pdb = app.PDBFile(pdb_filename)
-    
+
     # Set up implicit solvent forcefield.
     #forcefield = app.ForceField('amber99sbildn.xml')
     forcefield = app.ForceField('amber10.xml')
-    
+
     # Create the system.
     system = forcefield.createSystem(pdb.topology, nonbondedMethod=app.NoCutoff, constraints=app.HBonds)
 
@@ -49,7 +49,7 @@ def simulate(pdbcode, pdb_filename):
     # Create a context.
     context = mm.Context(system, integrator)
     context.setPositions(pdb.positions)
-    
+
     # Check to make sure energy is finite.
     state = context.getState(getEnergy=True)
     potential = state.getPotentialEnergy() / unit.kilocalories_per_mole
@@ -103,7 +103,6 @@ def test_build_and_simulate():
 
     # Keep track of list of failures.
     failures = list()
-        
     for pdbcode in pdbcodes_to_build:
         print "------------------------------------------------"
         print pdbcode
@@ -125,7 +124,7 @@ def test_build_and_simulate():
         timeout_seconds = 30
         watchdog = Watchdog(timeout_seconds)
         build_successful = False
-        try:        
+        try:
             from pdbfixer.pdbfixer import PDBFixer
             from simtk.openmm import app
             stage = "Creating PDBFixer..."
@@ -161,16 +160,15 @@ def test_build_and_simulate():
             #print traceback.print_exc()
             print str(e)
             failures.append((pdbcode, e))
-        
+
         watchdog.stop()
         del watchdog
-                    
+
         # Test simulating this with OpenMM.
         if (pdbcode in pdbcodes_to_simulate) and (build_successful):
             watchdog = Watchdog(timeout_seconds)
             try:
                 simulate(pdbcode, output_pdb_filename)
-                
             except Watchdog:
                 message = "timed out in simulation"
                 print message
@@ -182,7 +180,6 @@ def test_build_and_simulate():
                 #print traceback.print_exc()
                 print str(e)
                 failures.append((pdbcode, e))
-        
             watchdog.stop()
             del watchdog
 
@@ -201,7 +198,6 @@ def test_build_and_simulate():
         print ""
 
         raise Exception("Build test failed on one or more PDB files.")
-    
     else:
         print "All tests succeeded."
 
