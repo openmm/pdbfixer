@@ -918,7 +918,8 @@ def main():
         if options.atoms in ('all', 'hydrogen'):
             fixer.addMissingHydrogens(options.ph)
         if options.box is not None:
-            fixer.addSolvent(options.box*unit.nanometer, options.positiveIon, options.negativeIon, options.ionic*unit.molar)
+            fixer.addSolvent(boxSize=options.box*unit.nanometer, positiveIon=options.positiveIon, 
+                negativeIon=options.negativeIon, ionicStrength=options.ionic*unit.molar)
         app.PDBFile.writeFile(fixer.topology, fixer.positions, open(options.output, 'w'))
 
 if __name__ == '__main__':
