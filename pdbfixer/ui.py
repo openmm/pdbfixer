@@ -80,7 +80,7 @@ def addHydrogensPageCallback(parameters, handler):
         ionicStrength = float(parameters.getfirst('ionicstrength'))*unit.molar
         positiveIon = parameters.getfirst('positiveion')+'+'
         negativeIon = parameters.getfirst('negativeion')+'-'
-        fixer.addSolvent(boxSize, positiveIon, negativeIon, ionicStrength)
+        fixer.addSolvent(boxSize, None, positiveIon, negativeIon, ionicStrength)
     displaySaveFilePage()
 
 def saveFilePageCallback(parameters, handler):
