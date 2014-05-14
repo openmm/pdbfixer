@@ -592,6 +592,9 @@ class PDBFixer(object):
             old_name, index, new_name = mut_str.split("-")
             index = int(index)
             
+            if index not in index_to_old_name:
+                raise(KeyError("Cannot find index %d in system!" % index))
+            
             if index_to_old_name[index] != old_name:
                 raise(ValueError("You asked to mutate %s %d, but that residue is actually %s!" % (old_name, index, index_to_old_name[index])))
             
