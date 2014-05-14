@@ -544,6 +544,89 @@ class PDBFixer(object):
             modeller.delete(deleteAtoms)
             self.topology = modeller.topology
             self.positions = modeller.positions
+
+
+    def applyMutations(self, mutations):
+        """Apply a list of amino acid substitutions to make a mutant protein.
+
+        Parameters
+        ----------
+        mutations : list of strings
+            Each string must include the resName (original), index, 
+            and resName (target).  For example, ALA-133-GLY will mutate
+            alanine 133 to glycine.  
+        
+        Notes
+        -----
+        
+        We require three letter codes to avoid possible ambiguitities.
+        We can't guarnatee that the resulting model is a good one; for 
+        significant changes in sequence, you should probably be using
+        a standalone homology modelling tool.
+        
+        WARNING: the current code uses zero-based indexing. not resSeq.
+        
+        ToDo
+        ----
+        
+        When feature is available with OpenMM, convert this function to
+        use resSeq rather than index.
+
+        Examples
+        --------
+
+        Find nonstandard residues.
+
+        >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.applyMutations(["ALA-16-GLY"])
+
+        """
+        
+        # First find residues based on our table of standard substitutions.
+        
+        index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
+        index_to_new_residues = {}
+        
+        for mut_str in mutations:
+            old_name, index, new_name = mut_str.split("-")
+            index = int(index)
+            
+            if index_to_old_name[index] != old_name:
+                raise(ValueError("You asked to mutate %s %d, but that residue is actually %s!" % (old_name, index, index_to_old_name[index])))
+            
+            try:
+                template = self.templates[new_name]
+            except KeyError:
+                raise(KeyError("Cannot find residue %s in template library!" % new_name))
+            
+            index_to_new_residues[index] = new_name
+            
+        
+        residue_map = [(r, index_to_new_residues[r.index]) for r in self.topology.residues() if r.index in index_to_new_residues]
+
+        if len(residue_map) > 0:
+            deleteAtoms = []
+
+            # Find atoms that should be deleted.
+            
+            for residue, replaceWith in residue_map:
+                residue.name = replaceWith
+                print(residue)
+                print(replaceWith)
+                template = self.templates[replaceWith]
+                print(template)
+                standardAtoms = set(atom.name for atom in template.topology.atoms())
+                for atom in residue.atoms():
+                    if atom.element in (None, hydrogen) or atom.name not in standardAtoms:
+                        deleteAtoms.append(atom)
+            
+            # Delete them.
+            print(deleteAtoms)
+            modeller = app.Modeller(self.topology, self.positions)
+            modeller.delete(deleteAtoms)
+            self.topology = modeller.topology
+            self.positions = modeller.positions        
+
     
     def findMissingAtoms(self):
         """Find heavy atoms that are missing from the structure.
