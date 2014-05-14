@@ -579,6 +579,7 @@ class PDBFixer(object):
 
         >>> fixer = PDBFixer(pdbid='1VII')
         >>> fixer.applyMutations(["ALA-16-GLY"])
+        >>> fixer.addMissingHydrogens(7.0)
 
         """
         
