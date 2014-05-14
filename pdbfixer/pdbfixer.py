@@ -611,17 +611,13 @@ class PDBFixer(object):
             
             for residue, replaceWith in residue_map:
                 residue.name = replaceWith
-                print(residue)
-                print(replaceWith)
                 template = self.templates[replaceWith]
-                print(template)
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
                 for atom in residue.atoms():
                     if atom.element in (None, hydrogen) or atom.name not in standardAtoms:
                         deleteAtoms.append(atom)
             
             # Delete them.
-            print(deleteAtoms)
             modeller = app.Modeller(self.topology, self.positions)
             modeller.delete(deleteAtoms)
             self.topology = modeller.topology
