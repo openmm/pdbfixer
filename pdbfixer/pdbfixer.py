@@ -546,7 +546,7 @@ class PDBFixer(object):
             self.positions = modeller.positions
 
 
-    def applyMutations(self, mutations):
+    def applyMutations(self, mutations, chain_id, which_model=0):
         """Apply a list of amino acid substitutions to make a mutant protein.
 
         Parameters
@@ -555,7 +555,11 @@ class PDBFixer(object):
             Each string must include the resName (original), index, 
             and resName (target).  For example, ALA-133-GLY will mutate
             alanine 133 to glycine.  
-        
+        chain_id : str
+            String based chain ID of the single chain you wish to mutate.
+        which_model : int, default = 0
+            Which model to use in the pdb structure.
+
         Notes
         -----
         
@@ -564,21 +568,13 @@ class PDBFixer(object):
         significant changes in sequence, you should probably be using
         a standalone homology modelling tool.
         
-        WARNING: the current code uses zero-based indexing. not resSeq.
-        
-        ToDo
-        ----
-        
-        When feature is available with OpenMM, convert this function to
-        use resSeq rather than index.
-
         Examples
         --------
 
         Find nonstandard residues.
 
         >>> fixer = PDBFixer(pdbid='1VII')
-        >>> fixer.applyMutations(["ALA-16-GLY"])
+        >>> fixer.applyMutations(["ALA-57-GLY"])
         >>> fixer.addMissingHydrogens(7.0)
 
         """
@@ -588,9 +584,15 @@ class PDBFixer(object):
         index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
         index_to_new_residues = {}
         
+        chain_id_to_chain_number = dict((c.chain_id, k) for k, c in enumerate(self.structure.models[which_model].chains))
+        chain_number = chain_id_to_chain_number[chain_id]
+        
+        resSeq_to_index = dict((r.number, k) for k, r in enumerate(self.structure.models[which_model].chains[chain_number]))
+        
         for mut_str in mutations:
-            old_name, index, new_name = mut_str.split("-")
-            index = int(index)
+            old_name, resSeq, new_name = mut_str.split("-")
+            resSeq = int(resSeq)
+            index = resSeq_to_index[resSeq]
             
             if index not in index_to_old_name:
                 raise(KeyError("Cannot find index %d in system!" % index))
@@ -614,6 +616,8 @@ class PDBFixer(object):
             # Find atoms that should be deleted.
             
             for residue, replaceWith in residue_map:
+                if residue.chain.index != chain_number:
+                    continue  # Only modify specified chain
                 residue.name = replaceWith
                 template = self.templates[replaceWith]
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
