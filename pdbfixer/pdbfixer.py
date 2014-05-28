@@ -574,6 +574,8 @@ class PDBFixer(object):
         Find nonstandard residues.
 
         >>> fixer = PDBFixer(pdbid='1VII')
+        >>> fixer.findMissingAtoms()
+        >>> fixer.addMissingAtoms()        
         >>> fixer.applyMutations(["ALA-57-GLY"])
         >>> fixer.addMissingHydrogens(7.0)
 
