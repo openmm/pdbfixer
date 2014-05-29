@@ -18,10 +18,8 @@ def test_mutate_2():
     fixer.applyMutations(["ALA-57-GLY", "SER-56-ALA"], "A")
     fixer.addMissingHydrogens(7.0)
     temp_pdb = tempfile.NamedTemporaryFile()
-    app.PDBFile.writeFile(fixer.topology, fixer.positions, temp_pdb)
-    pdb = app.PDBFile(temp_pdb.name)
-    assert list(pdb.topology.residues())[16].name == "GLY", "Name of mutated residue did not change correctly!"
-    assert list(pdb.topology.residues())[15].name == "ALA", "Name of mutated residue did not change correctly!"
+    assert list(fixer.topology.residues())[16].name == "GLY", "Name of mutated residue did not change correctly!"
+    assert list(fixer.topology.residues())[15].name == "ALA", "Name of mutated residue did not change correctly!"
 
 @raises(ValueError)
 def test_mutate_3_fails():
