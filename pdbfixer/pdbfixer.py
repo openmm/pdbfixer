@@ -575,6 +575,7 @@ class PDBFixer(object):
 
         >>> fixer = PDBFixer(pdbid='1VII')
         >>> fixer.applyMutations(["ALA-57-GLY"])
+        >>> fixer.findMissingResidues()     
         >>> fixer.findMissingAtoms()
         >>> fixer.addMissingAtoms()        
         >>> fixer.addMissingHydrogens(7.0)

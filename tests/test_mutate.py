@@ -13,7 +13,10 @@ def test_mutate_1():
     temp_pdb = tempfile.NamedTemporaryFile()
     app.PDBFile.writeFile(fixer.topology, fixer.positions, temp_pdb)
     pdb = app.PDBFile(temp_pdb.name)
-    assert list(pdb.topology.residues())[16].name == "GLY", "Name of mutated residue did not change correctly!"
+    
+    new_residue57 = list(fixer.topology.residues())[16]
+    assert new_residue57.name == "GLY", "Name of mutated residue did not change correctly!"
+    assert len(list(new_residue57.atoms())) == 7, "Should have 7 atoms in GLY 56"    
 
 
 def test_mutate_2():
@@ -30,7 +33,7 @@ def test_mutate_2():
     assert new_residue56.name == "ALA", "Name of mutated residue did not change correctly!"
     
     assert len(list(new_residue56.atoms())) == 10, "Should have 10 atoms in ALA 56"
-    assert len(list(new_residue57.atoms())) == 19, "Should have 19 atoms in ALA 56"
+    assert len(list(new_residue57.atoms())) == 19, "Should have 19 atoms in LEU 57"
 
 
 @raises(ValueError)
