@@ -43,6 +43,10 @@ def test_mutate_2():
     desired_atom_names = set(["N", "CA", "CB", "C", "O", "H", "HA", "HB1", "HB2", "HB3"])
     assert atom_names == desired_atom_names, "Atom Names did not match for ALA 56"
 
+    atom_names = set([atom.name for atom in new_residue57.atoms()])
+    desired_atom_names = set(["C", "N", "CA", "CB", "CG", "CD1", "CD2", "O", "H", "HA", "HB2", "HB3", "HD11", "HD12", "HD13", "HD21", "HD22", "HD23", "HG"])
+    assert atom_names == desired_atom_names, "Atom Names did not match for LEU 57"
+
 
 
 @raises(ValueError)
