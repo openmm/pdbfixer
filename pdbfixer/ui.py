@@ -1,13 +1,15 @@
-import simtk.openmm.app as app
-from simtk.openmm.app.internal.pdbstructure import PdbStructure
-import simtk.unit as unit
-from pdbfixer import PDBFixer, substitutions, proteinResidues, dnaResidues, rnaResidues
-import uiserver
+from __future__ import absolute_import
+
 import webbrowser
 import os.path
-import gzip
 import time
-from io import BytesIO
+
+import simtk.openmm.app as app
+import simtk.unit as unit
+
+from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues
+from . import uiserver
+
 try:
     from urllib.request import urlopen
     from io import StringIO
