@@ -1,4 +1,5 @@
 
+from __future__ import print_function
 import pdbfixer
 import simtk.openmm 
 
@@ -79,7 +80,7 @@ def simulate(pdbcode, pdb_filename):
 
     del context, integrator
 
-    print "Simulation completed: potential = %.3f kcal/mol" % potential
+    print("Simulation completed: potential = %.3f kcal/mol" % potential)
 
     return
 
@@ -105,8 +106,8 @@ def test_build_and_simulate():
     failures = list()
         
     for pdbcode in pdbcodes_to_build:
-        print "------------------------------------------------"
-        print pdbcode
+        print("------------------------------------------------")
+        print(pdbcode)
 
         output_pdb_filename = 'output.pdb'
 
@@ -152,14 +153,14 @@ def test_build_and_simulate():
 
         except Watchdog:
             message = "timed out in stage %s" % stage
-            print message
+            print(message)
             failures.append((pdbcode, Exception(message)))
 
         except Exception as e:
-            print "EXCEPTION DURING BUILD"
+            print("EXCEPTION DURING BUILD")
             #import traceback
             #print traceback.print_exc()
-            print str(e)
+            print(str(e))
             failures.append((pdbcode, e))
         
         watchdog.stop()
@@ -173,14 +174,14 @@ def test_build_and_simulate():
                 
             except Watchdog:
                 message = "timed out in simulation"
-                print message
+                print(message)
                 failures.append((pdbcode, Exception(message)))
 
             except Exception as e:
-                print "EXCEPTION DURING SIMULATE"
+                print("EXCEPTION DURING SIMULATE")
                 #import traceback
                 #print traceback.print_exc()
-                print str(e)
+                print(str(e))
                 failures.append((pdbcode, e))
         
             watchdog.stop()
@@ -189,21 +190,21 @@ def test_build_and_simulate():
         # Clean up.
         os.remove(output_pdb_filename)
 
-    print "------------------------------------------------"
+    print("------------------------------------------------")
 
     if len(failures) != 0:
-        print ""
-        print "SUMMARY OF FAILURES:"
-        print ""
+        print("")
+        print("SUMMARY OF FAILURES:")
+        print("")
         for failure in failures:
             (pdbcode, exception) = failure
-            print "%6s : %s" % (pdbcode, str(exception))
-        print ""
+            print("%6s : %s" % (pdbcode, str(exception)))
+        print("")
 
         raise Exception("Build test failed on one or more PDB files.")
     
     else:
-        print "All tests succeeded."
+        print("All tests succeeded.")
 
 if __name__ == '__main__':
     test_build_and_simulate()
