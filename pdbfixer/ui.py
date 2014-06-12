@@ -20,6 +20,11 @@ def loadHtmlFile(name):
     file = os.path.join(htmlPath, name)
     return open(file).read()
 
+def loadImageFile(name):
+    imagePath = os.path.join(os.path.dirname(__file__), 'images')
+    file = os.path.join(imagePath, name)
+    return open(file).read()
+
 def controlsCallback(parameters, handler):
     if 'newfile' in parameters:
         displayStartPage()
@@ -28,6 +33,16 @@ def controlsCallback(parameters, handler):
         uiserver.server.shutdown()
         global uiIsRunning
         uiIsRunning = False
+
+def imageCallback(parameters, handler):
+    name = parameters['name'][0]
+    image = loadImageFile(name)
+    type = None
+    if name.endswith('.png'):
+        type = 'image/png'
+    elif name.endswith('.jpeg') or name.endswith('.jpg'):
+        type = 'image/jpeg'
+    handler.sendResponse(image, type=type)
 
 def startPageCallback(parameters, handler):
     global fixer
@@ -200,6 +215,7 @@ def launchUI():
     header = loadHtmlFile("header.html")
     uiserver.beginServing()
     uiserver.setCallback(controlsCallback, "/controls")
+    uiserver.setCallback(imageCallback, "/image")
     displayStartPage()
     url = 'http://localhost:'+str(uiserver.server.server_address[1])
     print("PDBFixer running: %s " % url)
