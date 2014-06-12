@@ -42,7 +42,32 @@ function animateSpinner() {
 }
 </script>
 <style>
-body {font-family:sans-serif}
+body {
+    margin-top: 0;
+    font-family:sans-serif;
+    background-color: rgb(217,217,217);
+    background-image: url("/image?name=background.jpg");
+    background-size: 80%;
+    background-repeat: repeat-y
+}
+input {
+    font-size: small
+}
+select {
+    font-size: small
+}
+table {
+    border-collapse: collapse;
+    border: 1pt solid black;
+    margin: 7pt
+}
+th {
+    padding: 2pt;
+    background-color: lightgray
+}
+td {
+    padding: 2pt
+}
 #progressParent {
     position: fixed;
     top: 40%;
@@ -80,8 +105,9 @@ body {font-family:sans-serif}
         This may take some time.
     </div>
 </div>
-<div style="background-color:LightSkyBlue;font-style:italic;font-size:xx-large;text-align:center">PDBFixer</div>
-<span style="background-color:LightSkyBlue;font-style:italic;font-size:large;float:right;height:100%;padding:0px 10px">
+<span style="font-style:italic;font-size:large;float:right;position:relative;top:0;right:0;height:100%;padding:10px 10px">
+    <img src="/image?name=logo_small.png"/>
+    <p/>
     <form method="post" action="/controls">
         <input type="submit" name="newfile" value="New File" id="newfile"/>
         <input type="submit" name="quit" value="Quit" style="float:right"/>
