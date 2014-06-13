@@ -20,10 +20,15 @@ def loadHtmlFile(name):
     file = os.path.join(htmlPath, name)
     return open(file).read()
 
+cachedImages = {}
+
 def loadImageFile(name):
-    imagePath = os.path.join(os.path.dirname(__file__), 'images')
-    file = os.path.join(imagePath, name)
-    return open(file).read()
+    global cachedImages
+    if name not in cachedImages:
+        imagePath = os.path.join(os.path.dirname(__file__), 'images')
+        file = os.path.join(imagePath, name)
+        cachedImages[name] = open(file).read()
+    return cachedImages[name]
 
 def controlsCallback(parameters, handler):
     if 'newfile' in parameters:
