@@ -752,8 +752,9 @@ class PDBFixer(object):
             integrator = mm.VariableLangevinIntegrator(temperature, frictionCoeff, errorTol)
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
-            # Minimize for just a few steps.
-            mm.LocalEnergyMinimizer.minimize(context, 1.0*unit.kilocalories_per_mole/unit.angstrom, 10) #
+            # Minimize.
+            mm.LocalEnergyMinimizer.minimize(context, 1.0*unit.kilocalories_per_mole/unit.angstrom, 10)
+            # Refine with Langevin dynamics.
             simulation_time = 10.0 * unit.picosecond
             context.setTime(0.0 * unit.picosecond)
             integrator.stepTo(simulation_time)
