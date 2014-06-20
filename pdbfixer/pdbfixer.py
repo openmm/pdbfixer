@@ -749,14 +749,12 @@ class PDBFixer(object):
             temperature = 300*unit.kelvin
             frictionCoeff = 10/unit.picosecond
             errorTol = 0.001
-            integrator = mm.VariableTimestepLangevinIntegrator(temperature, frictionCoeff, errorTol)
+            integrator = mm.VariableLangevinIntegrator(temperature, frictionCoeff, errorTol)
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
             #mm.LocalEnergyMinimizer.minimize(context) # DEBUG
-            simulation_time = 10.0 * unit.picosecond
-            print "Simulating for %.1f ps" % (simulation_time / unit.picosecond) # DEBUG
+            simulation_time = 100.0 * unit.picosecond
             integrator.stepTo(simulation_time)
-            print "Done." # DEBUG
             state = context.getState(getPositions=True)
             nearest = self._findNearestDistance(context, newTopology, newAtoms)
             if nearest < 0.15:
@@ -764,17 +762,20 @@ class PDBFixer(object):
                 # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
                 # repulsive interaction to try to improve the result.
                 
+                C_original = context.getParameter('C')
                 for i in range(10):
                     context.setParameter('C', 0.15*(i+1))
-                    print "Refining further by simulating for 200 steps" # DEBUG
-                    integrator.step(200)
-                    print "Done."
+                    integrator.step(1000)
                     d = self._findNearestDistance(context, newTopology, newAtoms)
                     if d > nearest:
                         nearest = d
                         state = context.getState(getPositions=True)
                         if nearest >= 0.15:
                             break
+                # Clean up with full interaction strength.
+                context.setParameter('C', C_original)
+                integrator.step(1000)
+                # Retrieve final positions.
                 context.setState(state)
                 state = context.getState(getPositions=True)
             
