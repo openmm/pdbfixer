@@ -752,8 +752,10 @@ class PDBFixer(object):
             integrator = mm.VariableLangevinIntegrator(temperature, frictionCoeff, errorTol)
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
-            #mm.LocalEnergyMinimizer.minimize(context) # DEBUG
-            simulation_time = 100.0 * unit.picosecond
+            # Minimize for just a few steps.
+            mm.LocalEnergyMinimizer.minimize(context, 1.0*unit.kilocalories_per_mole/unit.angstrom, 10) #
+            simulation_time = 10.0 * unit.picosecond
+            context.setTime(0.0 * unit.picosecond)
             integrator.stepTo(simulation_time)
             state = context.getState(getPositions=True)
             nearest = self._findNearestDistance(context, newTopology, newAtoms)
@@ -765,7 +767,8 @@ class PDBFixer(object):
                 C_original = context.getParameter('C')
                 for i in range(10):
                     context.setParameter('C', 0.15*(i+1))
-                    integrator.step(1000)
+                    context.setTime(0.0 * unit.picosecond)
+                    integrator.stepTo(simulation_time)
                     d = self._findNearestDistance(context, newTopology, newAtoms)
                     if d > nearest:
                         nearest = d
@@ -774,7 +777,8 @@ class PDBFixer(object):
                             break
                 # Clean up with full interaction strength.
                 context.setParameter('C', C_original)
-                integrator.step(1000)
+                context.setTime(0.0 * unit.picosecond)
+                integrator.stepTo(simulation_time)
                 # Retrieve final positions.
                 context.setState(state)
                 state = context.getState(getPositions=True)

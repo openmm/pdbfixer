@@ -103,12 +103,10 @@ def test_build_and_simulate():
 
     # Keep track of list of failures.
     failures = list()
-        
+
     for pdbcode in pdbcodes_to_build:
         print "------------------------------------------------"
         print pdbcode
-
-        output_pdb_filename = 'output.pdb'
 
         # PDB setup parameters.
         # TODO: Try several combinations?
@@ -122,10 +120,14 @@ def test_build_and_simulate():
         outfile = tempfile.NamedTemporaryFile(mode='w', delete=False)
         output_pdb_filename = outfile.name
 
+        # DEBUG
+        output_pdb_filename = pdbcode + '.pdb'
+        outfile = open(output_pdb_filename, 'w')
+
         timeout_seconds = 30
         watchdog = Watchdog(timeout_seconds)
         build_successful = False
-        try:        
+        try:
             from pdbfixer.pdbfixer import PDBFixer
             from simtk.openmm import app
             stage = "Creating PDBFixer..."
@@ -161,16 +163,16 @@ def test_build_and_simulate():
             #print traceback.print_exc()
             print str(e)
             failures.append((pdbcode, e))
-        
+
         watchdog.stop()
         del watchdog
-                    
+
         # Test simulating this with OpenMM.
         if (pdbcode in pdbcodes_to_simulate) and (build_successful):
             watchdog = Watchdog(timeout_seconds)
             try:
                 simulate(pdbcode, output_pdb_filename)
-                
+
             except Watchdog:
                 message = "timed out in simulation"
                 print message
@@ -182,12 +184,12 @@ def test_build_and_simulate():
                 #print traceback.print_exc()
                 print str(e)
                 failures.append((pdbcode, e))
-        
+
             watchdog.stop()
             del watchdog
 
         # Clean up.
-        os.remove(output_pdb_filename)
+        #os.remove(output_pdb_filename)
 
     print "------------------------------------------------"
 
