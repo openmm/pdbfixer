@@ -745,12 +745,18 @@ class PDBFixer(object):
             
             nonbonded.addInteractionGroup([atom.index for atom in newAtoms], range(system.getNumParticles()))
             
-            # Do an energy minimization.
-            
-            integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
+            # Refine newly added atoms with variable timestep Langevin dynamics.
+            temperature = 300*unit.kelvin
+            frictionCoeff = 10/unit.picosecond
+            errorTol = 0.001
+            integrator = mm.VariableTimestepLangevinIntegrator(temperature, frictionCoeff, errorTol)
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
-            mm.LocalEnergyMinimizer.minimize(context)
+            #mm.LocalEnergyMinimizer.minimize(context) # DEBUG
+            simulation_time = 10.0 * unit.picosecond
+            print "Simulating for %.1f ps" % (simulation_time / unit.picosecond) # DEBUG
+            integrator.stepTo(simulation_time)
+            print "Done." # DEBUG
             state = context.getState(getPositions=True)
             nearest = self._findNearestDistance(context, newTopology, newAtoms)
             if nearest < 0.15:
@@ -760,7 +766,9 @@ class PDBFixer(object):
                 
                 for i in range(10):
                     context.setParameter('C', 0.15*(i+1))
+                    print "Refining further by simulating for 200 steps" # DEBUG
                     integrator.step(200)
+                    print "Done."
                     d = self._findNearestDistance(context, newTopology, newAtoms)
                     if d > nearest:
                         nearest = d
