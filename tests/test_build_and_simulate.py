@@ -121,8 +121,8 @@ def test_build_and_simulate():
         output_pdb_filename = outfile.name
 
         # DEBUG
-        output_pdb_filename = pdbcode + '.pdb'
-        outfile = open(output_pdb_filename, 'w')
+        #output_pdb_filename = pdbcode + '.pdb'
+        #outfile = open(output_pdb_filename, 'w')
 
         timeout_seconds = 30
         watchdog = Watchdog(timeout_seconds)
@@ -189,7 +189,7 @@ def test_build_and_simulate():
             del watchdog
 
         # Clean up.
-        #os.remove(output_pdb_filename)
+        os.remove(output_pdb_filename)
 
     print "------------------------------------------------"
 
