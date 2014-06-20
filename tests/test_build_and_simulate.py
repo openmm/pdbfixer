@@ -96,7 +96,8 @@ def test_build_and_simulate():
         ]
 
     # DEBUG: A few small test cases.
-    pdbcodes_to_build = ['110D', '116D', '117D', '118D', '134D', '135D', '136D', '138D', '143D', '148D', '151D', '152D', '159D', '177D', '17RA', '183D', '184D', '186D', '187D', '188D', '189D', '1A11', '1A13', '1A1P', '1A3P', '1A51', '1A60', '1A83', '1A9L', '1AAF', '1AB1', '1ABZ', '1AC7', '1ACW', '1AD7', '1ADX', '1AFP', '1AFT', '1AFX', '1AG7', '1AGG', '1AGL', '1AGT', '1AHL', '1AIE', '1AJ1', '1AJF', '1AJJ', '1AJU', '1AKG', '1AKX', '1AL1', '1ALE', '1ALF', '1ALG', '1AM0', '1AMB', '1AMC', '1AML', '1ANP', '1ANR', '1ANS', '1AOO']
+    # pdbcodes_to_build = ['110D', '116D', '117D', '118D', '134D', '135D', '136D', '138D', '143D', '148D', '151D', '152D', '159D', '177D', '17RA', '183D', '184D', '186D', '187D', '188D', '189D', '1A11', '1A13', '1A1P', '1A3P', '1A51', '1A60', '1A83', '1A9L', '1AAF', '1AB1', '1ABZ', '1AC7', '1ACW', '1AD7', '1ADX', '1AFP', '1AFT', '1AFX', '1AG7', '1AGG', '1AGL', '1AGT', '1AHL', '1AIE', '1AJ1', '1AJF', '1AJJ', '1AJU', '1AKG', '1AKX', '1AL1', '1ALE', '1ALF', '1ALG', '1AM0', '1AMB', '1AMC', '1AML', '1ANP', '1ANR', '1ANS', '1AOO'] # Takes too long in Travis
+    pdbcodes_to_build = ['110D', '116D', '117D', '118D', '134D', '135D', '136D', '138D', '143D', '148D', '151D', '152D', '159D', '177D', '17RA', '183D', '184D', '186D', '187D', '188D', '189D', '1A11', '1A13', '1A1P', '1A3P', '1A51', '1A60', '1A83', '1A9L', '1AAF', '1AB1', '1ABZ', '1AC7', '1ACW', '1AD7', '1ADX', '1AFP', '1AFT', '1AFX', '1AG7', '1AGG', '1AGL', '1AGT', '1AHL', '1AIE', '1AJ1', '1AJF', '1AJJ', '1AJU', '1AKG', '1AKX', '1AL1', '1ALE', '1ALF', '1ALG']
 
     # Don't simulate any.
     pdbcodes_to_simulate = []
