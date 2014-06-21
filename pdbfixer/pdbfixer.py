@@ -746,28 +746,31 @@ class PDBFixer(object):
             nonbonded.addInteractionGroup([atom.index for atom in newAtoms], range(system.getNumParticles()))
             
             # Refine newly added atoms with variable timestep Langevin dynamics.
-            temperature = 300*unit.kelvin
-            frictionCoeff = 10/unit.picosecond
-            errorTol = 0.001
+            temperature = 300*unit.kelvin # room temperature
+            frictionCoeff = 90./unit.picosecond # strong viscosity
+            errorTol = 0.001 # default error tolerance
             integrator = mm.VariableLangevinIntegrator(temperature, frictionCoeff, errorTol)
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
+            # Turn off nonbonded interactions for initial refinement stage.
+            context.setParameter('C', 0.0)
             # Minimize.
-            mm.LocalEnergyMinimizer.minimize(context, 1.0*unit.kilocalories_per_mole/unit.angstrom, 10)
+            mm.LocalEnergyMinimizer.minimize(context)
             # Refine with Langevin dynamics.
-            simulation_time = 10.0 * unit.picosecond
+            simulation_time = 5.0 * unit.picosecond
             context.setTime(0.0 * unit.picosecond)
             integrator.stepTo(simulation_time)
+            mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
+            # Turn up sterics until we have no more overlaps.
             nearest = self._findNearestDistance(context, newTopology, newAtoms)
             if nearest < 0.15:
-                
                 # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
                 # repulsive interaction to try to improve the result.
-                
-                C_original = context.getParameter('C')
                 for i in range(10):
-                    context.setParameter('C', 0.15*(i+1))
+                    # Steadily increase strength of repulsive interaction
+                    prefactor = 0.10*i
+                    context.setParameter('C', prefactor)
                     context.setTime(0.0 * unit.picosecond)
                     integrator.stepTo(simulation_time)
                     d = self._findNearestDistance(context, newTopology, newAtoms)
@@ -776,20 +779,24 @@ class PDBFixer(object):
                         state = context.getState(getPositions=True)
                         if nearest >= 0.15:
                             break
+
                 # Clean up with full interaction strength.
-                context.setParameter('C', C_original)
+                context.setParameter('C', 1.0)
                 context.setTime(0.0 * unit.picosecond)
                 integrator.stepTo(simulation_time)
                 # Retrieve final positions.
                 context.setState(state)
                 state = context.getState(getPositions=True)
-            
+
+                # Check final contacts.
+                nearest = self._findNearestDistance(context, newTopology, newAtoms)
+                if nearest < 0.15:
+                    raise Exception("Could not eliminate bad contacts after adding missing atoms.  Giving up.")
+
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
-            
             (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(False, False)
-            
+
             # Copy over the minimized positions for the new atoms.
-            
             for a1, a2 in zip(newAtoms, newAtoms2):
                 newPositions2[a2.index] = state.getPositions()[a1.index]
             self.topology = newTopology2
