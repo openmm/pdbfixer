@@ -697,8 +697,14 @@ class PDBFixer(object):
         self.missingAtoms = missingAtoms
         self.missingTerminals = missingTerminals
     
-    def addMissingAtoms(self):
+    def addMissingAtoms(self, ignoreStericClashes=False):
         """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields.
+
+        Parameters
+        ----------
+        ignoreStericClashes : bool, optional, default=False
+            If False, an exception will be raised if steric clashes cannot be resolved.
+            If True, a structure will always be returned, even if steric clashes are present.
 
         Notes
         -----
@@ -707,12 +713,22 @@ class PDBFixer(object):
         Examples
         --------
         
-        Find missing heavy atoms in Abl kinase structure.
+        Find missing heavy atoms in Abl kinase structure, ignoring steric clashes.
         
-        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer = PDBFixer(pdbid='2F4J', ignoreStericClashes=True)
         >>> fixer.findMissingResidues()
         >>> fixer.findMissingAtoms()
         >>> fixer.addMissingAtoms()
+
+        Add missing atoms for a structure where the algorithm will likely fail, catching the exception.
+
+        >>> fixer = PDBFixer(pdbid='1AM0', ignoreStericClashes=False)
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> try:
+        >>>    fixer.addMissingAtoms()
+        >>> except Exception as e:
+        >>>    print e
 
         """
         
@@ -788,10 +804,11 @@ class PDBFixer(object):
                 context.setState(state)
                 state = context.getState(getPositions=True)
 
-                # Check final contacts.
-                nearest = self._findNearestDistance(context, newTopology, newAtoms)
-                if nearest < 0.15:
-                    raise Exception("Could not eliminate bad contacts after adding missing atoms.  Giving up.")
+                # Check final contacts if requested.
+                if not ignoreStericClashes:
+                    nearest = self._findNearestDistance(context, newTopology, newAtoms)
+                    if nearest < 0.15:
+                        raise Exception("Could not eliminate bad contacts after adding missing atoms.  Giving up.")
 
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
             (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(False, False)
