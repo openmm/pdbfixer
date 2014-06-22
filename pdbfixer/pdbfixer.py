@@ -773,7 +773,7 @@ class PDBFixer(object):
             # Minimize.
             mm.LocalEnergyMinimizer.minimize(context)
             # Refine with Langevin dynamics.
-            simulation_time = 5.0 * unit.picosecond
+            simulation_time = 1.0 * unit.picosecond
             context.setTime(0.0 * unit.picosecond)
             integrator.stepTo(simulation_time)
             mm.LocalEnergyMinimizer.minimize(context)
