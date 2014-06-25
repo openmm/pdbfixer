@@ -4,7 +4,7 @@
     </head>
 <body>
 <h1 style="text-align:center">PDBFixer</h1>
-<div style="text-align:center">Copyright 2013 by Peter Eastman and Stanford University</div>
+<div style="text-align:center">Copyright 2013-2014 by Peter Eastman and Stanford University</div>
 
 <h1>1. Introduction</h1>
 
@@ -34,7 +34,7 @@ To install PDBFixer, navigate to the root directory of the source distribution y
 This will install the PDBFixer python package as well as the command line program <tt>pdbfixer</tt>.
 
 <p>
-Before running PDBFixer, you must first install <a href="https://simtk.org/home/openmm">OpenMM</a> 5.2 or later.  Follow the installation instructions in the OpenMM manual.  It is also highly recommended that you install CUDA or OpenCL.  In principle PDBFixer can use the OpenMM reference platform, but it will be prohibitively slow. PDBFixer requires that <a href="http://www.numpy.org">NumPy</a> be installed.
+Before running PDBFixer, you must first install <a href="https://simtk.org/home/openmm">OpenMM</a> 6.0 or later.  Follow the installation instructions in the OpenMM manual.  It is also recommended that you install CUDA or OpenCL, since the performance will usually be faster than when running on the CPU platform.  PDBFixer requires that <a href="http://www.numpy.org">NumPy</a> be installed.
 
 
 <h1>3. PDBFixer as a Desktop Application</h1>
@@ -133,7 +133,7 @@ PDBFixer is based on OpenMM, and to use its Python API you should first be famil
 <p>
 To use PDBFixer create a <tt>PDBFixer</tt> object, passing to its constructor a <tt>PdbStructure</tt> object containing the structure to process.  You then call a series of methods on it to perform various transformations.  When all the transformations are done, you can get the new structure from its <tt>topology</tt> and <tt>positions</tt> fields.  The overall outline of your code will look something like this:
 <tt><pre>
-fixer = PDBFixer(PdbStructure(open('myfile.pdb')))
+fixer = PDBFixer(file=open('myfile.pdb'))
 # ...
 # Call various methods on the PDBFixer
 # ...
@@ -213,8 +213,7 @@ Here is a complete example that ties this together.  It adds all missing atoms i
 <tt><pre>
 from pdbfixer import PDBFixer
 from simtk.openmm.app import PDBFile
-from simtk.openmm.app.internal.pdbstructure import PdbStructure
-fixer = PDBFixer(PdbStructure(open('myfile.pdb')))
+fixer = PDBFixer(file=open('myfile.pdb'))
 fixer.findMissingResidues()
 fixer.findNonstandardResidues()
 fixer.replaceNonstandardResidues()
@@ -228,7 +227,7 @@ PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
 
 Suppose you want to keep only the first chain in the file and remove all the others.  To do this, call <tt>removeChains()</tt>:
 <tt><pre>
-<span style="color:grey">fixer = PDBFixer(PdbStructure(open('myfile.pdb')))</span>
+<span style="color:grey">fixer = PDBFixer(file=open('myfile.pdb'))</span>
 numChains = len(list(fixer.topology.chains()))
 fixer.removeChains(range(1, numChains))
 <span style="color:grey">fixer.findMissingResidues()</span>
