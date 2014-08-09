@@ -413,10 +413,11 @@ class PDBFixer(object):
             chainIndices = list()
         if chainIds != None:
             # Convert chain ids to chain indices
+            which_model = 0
             chain_id_to_chain_number = dict((c.chain_id, k) for k, c in enumerate(self.structure.models[which_model].chains))
             for chainId in chainIds:
-            chainNumber = chain_id_to_chain_number[chainId]
-            chainIndices.append(chainNumber)
+                chainNumber = chain_id_to_chain_number[chainId]
+                chainIndices.append(chainNumber)
             # Ensure only unique entries remain.
             chainIndices = list(set(chainIndices))
 
