@@ -412,12 +412,11 @@ class PDBFixer(object):
         if chainIndices == None:
             chainIndices = list()
         if chainIds != None:
-            # Convert chain ids to chain indices
-            which_model = 0
-            chain_id_to_chain_number = dict((c.chain_id, k) for k, c in enumerate(self.structure.models[which_model].chains))
-            for chainId in chainIds:
-                chainNumber = chain_id_to_chain_number[chainId]
-                chainIndices.append(chainNumber)
+            # Add all chains that match the selection to the list.
+            chain_id_list = [c.chain_id for c in self.structure.models[0].chains]
+            for (chainNumber, chainId) in enumerate(chain_id_list):
+                if chainId in chainIds:
+                    chainIndices.append(chainNumber)
             # Ensure only unique entries remain.
             chainIndices = list(set(chainIndices))
 
