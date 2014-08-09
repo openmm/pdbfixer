@@ -382,13 +382,15 @@ class PDBFixer(object):
                 templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
                 newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
     
-    def removeChains(self, chainIndices):
+    def removeChains(self, chainIndices=None, chainIds=None):
         """Remove a set of chains from the structure.
         
         Parameters
         ----------
-        chainIndices : list of int
-            List of the indices of the chains to remove.
+        chainIndices : list of int, optional, default=None
+            List of indices of chains to remove.
+        chainIds : list of str, optional, default=None
+            List of chain ids of chains to remove.
 
         Examples
         --------
@@ -396,15 +398,38 @@ class PDBFixer(object):
         Load a PDB file with two chains and eliminate the second chain.
 
         >>> fixer = PDBFixer(pdbid='4J7F')
-        >>> fixer.removeChains([1])
+        >>> fixer.removeChains(chainIndices=[1])
+
+        Load a PDB file with two chains and eliminate chains named 'B' and 'D'.
+
+        >>> fixer = PDBFixer(pdbid='4J7F')
+        >>> fixer.removeChains(chainIds=['B','D'])
 
         """
         modeller = app.Modeller(self.topology, self.positions)
         allChains = list(self.topology.chains())
+
+        if chainIndices == None:
+            chainIndices = list()
+        if chainIds != None:
+            # Convert chain ids to chain indices
+            chain_id_to_chain_number = dict((c.chain_id, k) for k, c in enumerate(self.structure.models[which_model].chains))
+            for chainId in chainIds:
+            chainNumber = chain_id_to_chain_number[chainId]
+            chainIndices.append(chainNumber)
+            # Ensure only unique entries remain.
+            chainIndices = list(set(chainIndices))
+
+        # Do nothing if no chains will be deleted.
+        if len(chainIndices) == 0:
+            return
+
         modeller.delete(allChains[i] for i in chainIndices)
         self.topology = modeller.topology
         self.positions = modeller.positions
         self.structureChains = [self.structureChains[i] for i in range(len(self.structureChains)) if i not in chainIndices]
+
+        return
     
     def findMissingResidues(self):
         """Find residues that are missing from the structure.
