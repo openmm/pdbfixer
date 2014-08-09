@@ -25,7 +25,7 @@ def remove_chain_indices_and_verify(pdbid, chain_indices_to_remove, expected_cha
     # Remove specified chains.
     fixer.removeChains(chainIndices=chain_indices_to_remove)
     # Check to make sure asserted chains remain.
-    chain_ids_remaining = [ chain.id for chain in fixer.topology.chains() ]
+    chain_ids_remaining = [c.chain_id for c in fixer.structureChains]
     assertItemsEqual(chain_ids_remaining, expected_chain_ids_remaining)
 
 def test_removechain_indices():
