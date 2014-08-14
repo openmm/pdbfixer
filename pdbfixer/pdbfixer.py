@@ -722,8 +722,14 @@ class PDBFixer(object):
         self.missingAtoms = missingAtoms
         self.missingTerminals = missingTerminals
     
-    def addMissingAtoms(self):
+    def addMissingAtoms(self, ignoreStericClashes=False):
         """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields.
+
+        Parameters
+        ----------
+        ignoreStericClashes : bool, optional, default=False
+            If False, an exception will be raised if steric clashes cannot be resolved.
+            If True, a structure will always be returned, even if steric clashes are present.
 
         Notes
         -----
@@ -732,12 +738,22 @@ class PDBFixer(object):
         Examples
         --------
         
-        Find missing heavy atoms in Abl kinase structure.
+        Find missing heavy atoms in Abl kinase structure, ignoring steric clashes.
         
-        >>> fixer = PDBFixer(pdbid='2F4J')
+        >>> fixer = PDBFixer(pdbid='2F4J', ignoreStericClashes=True)
         >>> fixer.findMissingResidues()
         >>> fixer.findMissingAtoms()
         >>> fixer.addMissingAtoms()
+
+        Add missing atoms for a structure where the algorithm will likely fail, catching the exception.
+
+        >>> fixer = PDBFixer(pdbid='1AM0', ignoreStericClashes=False)
+        >>> fixer.findMissingResidues()
+        >>> fixer.findMissingAtoms()
+        >>> try:
+        >>>    fixer.addMissingAtoms()
+        >>> except Exception as e:
+        >>>    print e
 
         """
         
@@ -770,37 +786,59 @@ class PDBFixer(object):
             
             nonbonded.addInteractionGroup([atom.index for atom in newAtoms], range(system.getNumParticles()))
             
-            # Do an energy minimization.
-            
-            integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
+            # Refine newly added atoms with variable timestep Langevin dynamics.
+            temperature = 300*unit.kelvin # room temperature
+            frictionCoeff = 90./unit.picosecond # strong viscosity
+            errorTol = 0.001 # default error tolerance
+            integrator = mm.VariableLangevinIntegrator(temperature, frictionCoeff, errorTol)
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
+            # Turn off nonbonded interactions for initial refinement stage.
+            context.setParameter('C', 0.0)
+            # Minimize.
+            mm.LocalEnergyMinimizer.minimize(context)
+            # Refine with Langevin dynamics.
+            simulation_time = 1.0 * unit.picosecond
+            context.setTime(0.0 * unit.picosecond)
+            integrator.stepTo(simulation_time)
             mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
+            # Turn up sterics until we have no more overlaps.
             nearest = self._findNearestDistance(context, newTopology, newAtoms)
             if nearest < 0.15:
-                
                 # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
                 # repulsive interaction to try to improve the result.
-                
                 for i in range(10):
-                    context.setParameter('C', 0.15*(i+1))
-                    integrator.step(200)
+                    # Steadily increase strength of repulsive interaction
+                    prefactor = 0.10*i
+                    context.setParameter('C', prefactor)
+                    context.setTime(0.0 * unit.picosecond)
+                    integrator.stepTo(simulation_time)
                     d = self._findNearestDistance(context, newTopology, newAtoms)
                     if d > nearest:
                         nearest = d
                         state = context.getState(getPositions=True)
                         if nearest >= 0.15:
                             break
+
+                # Clean up with full interaction strength.
+                context.setParameter('C', 1.0)
+                context.setTime(0.0 * unit.picosecond)
+                integrator.stepTo(simulation_time)
+                # Retrieve final positions.
                 context.setState(state)
                 state = context.getState(getPositions=True)
-            
+
+                # Check final contacts if requested.
+                if not ignoreStericClashes:
+                    nearest = self._findNearestDistance(context, newTopology, newAtoms)
+                    if nearest < 0.15:
+                        raise Exception("Could not eliminate bad contacts after adding missing atoms.  Giving up.")
+
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
-            
             (newTopology2, newPositions2, newAtoms2, existingAtomMap2) = self._addAtomsToTopology(False, False)
-            
+
             # Copy over the minimized positions for the new atoms.
-            
             for a1, a2 in zip(newAtoms, newAtoms2):
                 newPositions2[a2.index] = state.getPositions()[a1.index]
             self.topology = newTopology2
