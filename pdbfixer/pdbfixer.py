@@ -166,12 +166,14 @@ class PDBFixer(object):
         >>> fixer = PDBFixer(pdbid=pdbid)
 
         """
-        
+
         # Check to make sure only one option has been specified.
         if bool(filename) + bool(file) + bool(url) + bool(pdbid) != 1:
             raise Exception("Exactly one option [filename, file, url, pdbid] must be specified.")
 
+        self.source = None
         if filename:
+            self.source = filename
             # A local file has been specified.
             file = open(filename, 'r')                
             structure = PdbStructure(file)
@@ -180,6 +182,7 @@ class PDBFixer(object):
             # A file-like object has been specified.
             structure = PdbStructure(file)  
         elif url:
+            self.source = url
             # A URL has been specified.
             file = urlopen(url)
             structure = PdbStructure(file)
@@ -187,6 +190,7 @@ class PDBFixer(object):
         elif pdbid:
             # A PDB id has been specified.
             url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
+            self.source = url
             file = urlopen(url)
             # Read contents all at once and split into lines, since urlopen doesn't like it when we read one line at a time over the network.
             contents = file.read()
@@ -1035,7 +1039,10 @@ def main():
         if options.box is not None:
             fixer.addSolvent(boxSize=options.box*unit.nanometer, positiveIon=options.positiveIon, 
                 negativeIon=options.negativeIon, ionicStrength=options.ionic*unit.molar)
-        app.PDBFile.writeFile(fixer.topology, fixer.positions, open(options.output, 'w'))
+        with open(options.output, 'w') as f:
+            if fixer.source is not None:
+                f.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
+            app.PDBFile.writeFile(fixer.topology, fixer.positions, f)
 
 if __name__ == '__main__':
     main()
