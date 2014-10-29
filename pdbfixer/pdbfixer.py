@@ -115,6 +115,20 @@ def _overlayPoints(points1, points2):
     (u, s, v) = lin.svd(R)
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
+def _findUnoccupiedDirection(point, positions):
+    """Given a point in space and a list of atom positions, find the direction in which the local density of atoms is lowest."""
+    
+    point = point.value_in_unit(unit.nanometers)
+    direction = mm.Vec3(0, 0, 0)
+    for pos in positions.value_in_unit(unit.nanometers):
+        delta = pos-point
+        distance = unit.norm(delta)
+        if distance > 0.1:
+            distance2 = distance*distance
+            direction -= delta/(distance2*distance2)
+    direction /= unit.norm(direction)
+    return direction
+
 class PDBFixer(object):
     """PDBFixer implements many tools for fixing problems in PDB files.
     """
@@ -246,6 +260,7 @@ class PDBFixer(object):
         existingAtomMap = {}
         addedAtomMap = {}
         addedOXT = []
+        residueCenters = [self._computeResidueCenter(res).value_in_unit(unit.nanometers) for res in self.topology.residues()]*unit.nanometers
         for chain in self.topology.chains():
             if omitUnknownMolecules and not any(residue.name in self.templates for residue in chain.residues()):
                 continue
@@ -260,13 +275,15 @@ class PDBFixer(object):
                     endPosition = self._computeResidueCenter(residue)
                     if indexInChain > 0:
                         startPosition = self._computeResidueCenter(chainResidues[indexInChain-1])
+                        loopDirection = _findUnoccupiedDirection((startPosition+endPosition)/2, residueCenters)
                     else:
-                        outward = endPosition-self.centroid
+                        outward = _findUnoccupiedDirection(endPosition, residueCenters)*unit.nanometers
                         norm = unit.norm(outward)
                         if norm > 0*unit.nanometer:
                             outward *= len(insertHere)*0.5*unit.nanometer/norm
                         startPosition = endPosition+outward
-                    self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, residue, newAtoms, newPositions)
+                        loopDirection = None
+                    self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, loopDirection, residue, newAtoms, newPositions)
                 
                 # Create the new residue and add existing heavy atoms.
                                 
@@ -316,12 +333,12 @@ class PDBFixer(object):
                     insertHere = self.missingResidues[(chain.index, indexInChain+1)]
                     if len(insertHere) > 0:
                         startPosition = self._computeResidueCenter(residue)
-                        outward = startPosition-self.centroid
+                        outward = _findUnoccupiedDirection(startPosition, residueCenters)*unit.nanometers
                         norm = unit.norm(outward)
                         if norm > 0*unit.nanometer:
                             outward *= len(insertHere)*0.5*unit.nanometer/norm
                         endPosition = startPosition+outward
-                        self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, residue, newAtoms, newPositions)
+                        self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, None, residue, newAtoms, newPositions)
                         newResidue = list(newChain.residues())[-1]
                         if newResidue.name in proteinResidues:
                             terminalsToAdd = ['OXT']
@@ -353,9 +370,23 @@ class PDBFixer(object):
         """Compute the centroid of a residue."""
         return unit.sum([self.pdb.positions[atom.index] for atom in residue.atoms()])/len(list(residue.atoms()))
     
-    def _addMissingResiduesToChain(self, chain, residueNames, startPosition, endPosition, orientTo, newAtoms, newPositions):
+    def _addMissingResiduesToChain(self, chain, residueNames, startPosition, endPosition, loopDirection, orientTo, newAtoms, newPositions):
         """Add a series of residues to a chain."""
         orientToPositions = dict((atom.name, self.positions[atom.index]) for atom in orientTo.atoms())
+        if loopDirection is None:
+            loopDirection = mm.Vec3(0, 0, 0)
+        
+        # We'll add the residues in an arc connecting the endpoints.  Figure out the height of that arc.
+        
+        length = unit.norm(endPosition-startPosition)
+        numResidues = len(residueNames)
+        if length > numResidues*0.3*unit.nanometers:
+            loopHeight = 0*unit.nanometers
+        else:
+            loopHeight = (numResidues*0.3*unit.nanometers-length)/2
+        
+        # Add the residues.
+        
         for i, residueName in enumerate(residueNames):
             template = self.templates[residueName]
 
@@ -372,7 +403,8 @@ class PDBFixer(object):
             # Create the new residue.
             
             newResidue = chain.topology.addResidue(residueName, chain)
-            translate = startPosition+(endPosition-startPosition)*(i+1.0)/(len(residueNames)+1.0)
+            fraction = (i+1.0)/(numResidues+1.0)
+            translate = startPosition + (endPosition-startPosition)*fraction + loopHeight*math.sin(fraction*math.pi)*loopDirection
             templateAtoms = list(template.topology.atoms())
             if newResidue == next(chain.residues()):
                 templateAtoms = [atom for atom in templateAtoms if atom.name not in ('P', 'OP1', 'OP2')]
@@ -663,7 +695,7 @@ class PDBFixer(object):
             mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
             nearest = self._findNearestDistance(context, newTopology, newAtoms)
-            if nearest < 0.15:
+            if nearest < 0.13:
                 
                 # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
                 # repulsive interaction to try to improve the result.
@@ -675,7 +707,7 @@ class PDBFixer(object):
                     if d > nearest:
                         nearest = d
                         state = context.getState(getPositions=True)
-                        if nearest >= 0.15:
+                        if nearest >= 0.13:
                             break
                 context.setState(state)
                 state = context.getState(getPositions=True)
