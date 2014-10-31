@@ -133,14 +133,14 @@ class PDBFixer(object):
     """PDBFixer implements many tools for fixing problems in PDB files.
     """
     
-    def __init__(self, filename=None, file=None, url=None, pdbid=None):
+    def __init__(self, filename=None, pdbfile=None, url=None, pdbid=None):
         """Create a new PDBFixer instance to fix problems in a PDB file.
         
         Parameters
         ----------
         filename : str, optional, default=None
             A filename specifying the file from which the PDB file is to be read.
-        file : file, optional, default=None
+        pdbfile : file, optional, default=None
             A file-like object from which the PDB file is to be read.
             The file is not closed after reading.
         url : str, optional, default=None
@@ -150,7 +150,7 @@ class PDBFixer(object):
             
         Notes
         -----
-        Only one of structure, filename, file, url, or pdbid may be specified or an exception will be thrown.
+        Only one of structure, filename, pdbfile, url, or pdbid may be specified or an exception will be thrown.
             
         Examples
         --------
@@ -160,7 +160,7 @@ class PDBFixer(object):
         >>> pdbid = '1VII'
         >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
         >>> file = urlopen(url)
-        >>> fixer = PDBFixer(file=file)
+        >>> fixer = PDBFixer(pdbfile=file)
 
         Start from a filename.
         
@@ -182,8 +182,8 @@ class PDBFixer(object):
         """
 
         # Check to make sure only one option has been specified.
-        if bool(filename) + bool(file) + bool(url) + bool(pdbid) != 1:
-            raise Exception("Exactly one option [filename, file, url, pdbid] must be specified.")
+        if bool(filename) + bool(pdbfile) + bool(url) + bool(pdbid) != 1:
+            raise Exception("Exactly one option [filename, pdbfile, url, pdbid] must be specified.")
 
         self.source = None
         if filename:
@@ -192,9 +192,9 @@ class PDBFixer(object):
             file = open(filename, 'r')                
             structure = PdbStructure(file)
             file.close()
-        elif file:
+        elif pdbfile:
             # A file-like object has been specified.
-            structure = PdbStructure(file)  
+            structure = PdbStructure(pdbfile)  
         elif url:
             self.source = url
             # A URL has been specified.
