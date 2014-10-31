@@ -829,6 +829,8 @@ class PDBFixer(object):
                         if nearest >= 0.13:
                             break
                 context.setState(state)
+                context.setParameter('C', 1.0)
+                mm.LocalEnergyMinimizer.minimize(context)
                 state = context.getState(getPositions=True)
             
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
