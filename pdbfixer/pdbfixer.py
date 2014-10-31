@@ -29,7 +29,7 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 __author__ = "Peter Eastman"
-__version__ = "1.0"
+__version__ = "1.1"
 
 import simtk.openmm as mm
 import simtk.openmm.app as app
@@ -221,7 +221,6 @@ class PDBFixer(object):
         self.pdb = app.PDBFile(structure)
         self.topology = self.pdb.topology
         self.positions = self.pdb.positions
-        self.centroid = unit.sum(self.positions)/len(self.positions)
         self.structureChains = list(self.structure.iter_chains())
         
         # Load the templates.
