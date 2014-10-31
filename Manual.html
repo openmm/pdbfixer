@@ -131,9 +131,9 @@ This is the most powerful way to use PDBFixer.  It allows you to script the proc
 <p>
 PDBFixer is based on OpenMM, and to use its Python API you should first be familiar with the OpenMM API.  Consult the OpenMM documentation for details.  In everything that follows, I will assume you are already familiar with OpenMM.
 <p>
-To use PDBFixer create a <tt>PDBFixer</tt> object, passing to its constructor a <tt>PdbStructure</tt> object containing the structure to process.  You then call a series of methods on it to perform various transformations.  When all the transformations are done, you can get the new structure from its <tt>topology</tt> and <tt>positions</tt> fields.  The overall outline of your code will look something like this:
+To use PDBFixer create a <tt>PDBFixer</tt> object, passing to its constructor the file to process.  You then call a series of methods on it to perform various transformations.  When all the transformations are done, you can get the new structure from its <tt>topology</tt> and <tt>positions</tt> fields.  The overall outline of your code will look something like this:
 <tt><pre>
-fixer = PDBFixer(file=open('myfile.pdb'))
+fixer = PDBFixer(filename='myfile.pdb')
 # ...
 # Call various methods on the PDBFixer
 # ...
@@ -213,7 +213,7 @@ Here is a complete example that ties this together.  It adds all missing atoms i
 <tt><pre>
 from pdbfixer import PDBFixer
 from simtk.openmm.app import PDBFile
-fixer = PDBFixer(file=open('myfile.pdb'))
+fixer = PDBFixer(filename='myfile.pdb')
 fixer.findMissingResidues()
 fixer.findNonstandardResidues()
 fixer.replaceNonstandardResidues()
@@ -227,7 +227,7 @@ PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
 
 Suppose you want to keep only the first chain in the file and remove all the others.  To do this, call <tt>removeChains()</tt>:
 <tt><pre>
-<span style="color:grey">fixer = PDBFixer(file=open('myfile.pdb'))</span>
+<span style="color:grey">fixer = PDBFixer(filename='myfile.pdb')</span>
 numChains = len(list(fixer.topology.chains()))
 fixer.removeChains(range(1, numChains))
 <span style="color:grey">fixer.findMissingResidues()</span>
