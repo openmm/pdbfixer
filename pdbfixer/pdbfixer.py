@@ -448,7 +448,7 @@ class PDBFixer(object):
             chainIndices = list()
         if chainIds != None:
             # Add all chains that match the selection to the list.
-            chain_id_list = [c.chain_id for c in self.structure.models[0].chains]
+            chain_id_list = [c.chain_id for c in self.structureChains]
             for (chainNumber, chainId) in enumerate(chain_id_list):
                 if chainId in chainIds:
                     chainIndices.append(chainNumber)
@@ -465,7 +465,85 @@ class PDBFixer(object):
         self.structureChains = [self.structureChains[i] for i in range(len(self.structureChains)) if i not in chainIndices]
 
         return
-    
+
+    def removeResiduesFromChains(self, residueStart, residueEnd, chainIndices=None, chainIds=None):
+        """Remove a set of residues from all or specified chains.
+
+        If no chains are specified, the residue span is removed from all chains.
+
+        Parameters
+        ----------
+        chainIndices : list of int, optional, default=None
+            List of indices of chains from which residues are to be removed.
+        chainIds : list of str, optional, default=None
+            List of chain ids of chains from which residues are to be removed.
+
+        Examples
+        --------
+
+        Load a PDB file with two chains and eliminate specified residues from both chains.
+
+        >>> fixer = PDBFixer(pdbid='4JSV')
+        >>> fixer.removeResiduesFromChains(1385, 2001)
+
+        Load a PDB file with two chains and eliminate specified residues from chain B.
+
+        >>> fixer = PDBFixer(pdbid='4JSV')
+        >>> fixer.removeResiduesFromChains(1385, 2001, chainIds=['B'])
+
+        Load a PDB file with two chains and eliminate specified residues from the second chain.
+
+        >>> fixer = PDBFixer(pdbid='4JSV')
+        >>> fixer.removeResiduesFromChains(1385, 2001, chainIndices=[1])
+
+        """
+        # Iterate of residues from structure and topology at the same time.
+        structure_residues = [ residue for residue in self.structure.iter_residues() ]
+        topology_residues = [ residue for residue in self.topology.residues() ]
+
+        # Sanity check: Make sure residue info matches up.
+        for (structure_residue, topology_residue) in zip(structure_residues, topology_residues):
+            if (structure_residue.name != topology_residue.name):
+                raise Exception("structure_residue.name != topology_residue.name: structure_residue = [%d %s], topology_residue = [%d %s]" % (structure_residue.number, structure_residue.name, topology_residue.index, topology_residue.name))
+
+        # Create mapping.
+        structure_to_topology = { structure_residue : topology_residue for (structure_residue, topology_residue) in zip(structure_residues, topology_residues) }
+
+        # Determine chains to process.
+        if chainIndices == None:
+            chainIndices = list()
+        if chainIds != None:
+            # Add all chains that match the selection to the list.
+            chain_id_list = [c.chain_id for c in self.structureChains]
+            for (chainNumber, chainId) in enumerate(chain_id_list):
+                if chainId in chainIds:
+                    chainIndices.append(chainNumber)
+            # Ensure only unique entries remain.
+            chainIndices = list(set(chainIndices))
+        if (chainIndices==None) and (chainIds==None):
+            # Add all chains.
+            chain_id_list = [c.chain_id for c in self.structureChains]
+            for (chainNumber, chainId) in enumerate(chain_id_list):
+                chainIndices.append(chainNumber)
+
+        # Build residue deletion queue.
+        residues_to_delete = list()
+        chains = [ c for c in self.structure.iter_chains() ]
+        chains = [ chains[index] for index in chainIndices ]
+        for chain in chains:
+            for structure_residue in chain.residues:
+                topology_residue = structure_to_topology[structure_residue]
+                # Add to queue for deletion if match.
+                if (structure_residue.number >= residueStart) and (structure_residue.number <= residueEnd):
+                    residues_to_delete.append(topology_residue)
+
+        # Delete residues.
+        modeller = app.Modeller(self.topology, self.positions)
+        modeller.delete(residues_to_delete)
+        [self.topology, self.positions] = [modeller.topology, modeller.positions]
+
+        return
+
     def findMissingResidues(self):
         """Find residues that are missing from the structure.
         
@@ -612,9 +690,9 @@ class PDBFixer(object):
         Parameters
         ----------
         mutations : list of strings
-            Each string must include the resName (original), index, 
+            Each string must include the resName (original), index,
             and resName (target).  For example, ALA-133-GLY will mutate
-            alanine 133 to glycine.  
+            alanine 133 to glycine.
         chain_id : str
             String based chain ID of the single chain you wish to mutate.
         which_model : int, default = 0
@@ -622,26 +700,21 @@ class PDBFixer(object):
 
         Notes
         -----
-        
+
         We require three letter codes to avoid possible ambiguitities.
-        We can't guarnatee that the resulting model is a good one; for 
+        We can't guarnatee that the resulting model is a good one; for
         significant changes in sequence, you should probably be using
         a standalone homology modelling tool.
-        
+
         Examples
         --------
 
-        Find nonstandard residues.
+        Apply a single mutation to chain A.
 
         >>> fixer = PDBFixer(pdbid='1VII')
-        >>> fixer.applyMutations(["ALA-57-GLY"])
-        >>> fixer.findMissingResidues()     
-        >>> fixer.findMissingAtoms()
-        >>> fixer.addMissingAtoms()        
-        >>> fixer.addMissingHydrogens(7.0)
+        >>> fixer.applyMutations(["ALA-57-GLY"], chain_id='A')
 
         """
-        
         # First find residues based on our table of standard substitutions.
         
         index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
