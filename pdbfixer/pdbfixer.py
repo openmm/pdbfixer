@@ -527,20 +527,28 @@ class PDBFixer(object):
                 chainIndices.append(chainNumber)
 
         # Build residue deletion queue.
-        residues_to_delete = list()
+        topology_residues_to_delete = list()
+        structure_residues_to_delete = list()
         chains = [ c for c in self.structure.iter_chains() ]
         chains = [ chains[index] for index in chainIndices ]
         for chain in chains:
             for structure_residue in chain.residues:
                 topology_residue = structure_to_topology[structure_residue]
-                # Add to queue for deletion if match.
                 if (structure_residue.number >= residueStart) and (structure_residue.number <= residueEnd):
-                    residues_to_delete.append(topology_residue)
+                    # Add to queue for deletion.
+                    topology_residues_to_delete.append(topology_residue)
+                    structure_residues_to_delete.append((chain, structure_residue))
 
         # Delete residues.
         modeller = app.Modeller(self.topology, self.positions)
-        modeller.delete(residues_to_delete)
+        modeller.delete(topology_residues_to_delete)
         [self.topology, self.positions] = [modeller.topology, modeller.positions]
+
+        # Delete structure residues.
+        for (chain, structure_residue) in structure_residues_to_delete:
+            chain.residues.remove(structure_residue)
+            del chain.residues_by_num_icode[str(structure_residue.number) + structure_residue.insertion_code]
+            del chain.residues_by_number[structure_residue.number]
 
         return
 
