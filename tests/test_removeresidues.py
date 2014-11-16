@@ -23,3 +23,4 @@ def remove_residues_and_verify(pdbid, retainStart, retainEnd, chain_id):
 def test_removeresidues():
     remove_residues_and_verify('1VII', 44, 71, 'A')
     remove_residues_and_verify('4J6F', 1385, 2549, 'B')
+    remove_residues_and_verify('1IEP', 225, 498, 'A')
