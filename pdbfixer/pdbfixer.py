@@ -500,7 +500,9 @@ class PDBFixer(object):
 
         """
         # Iterate of residues from structure and topology at the same time.
-        structure_residues = [ residue for residue in self.structure.iter_residues() ]
+        structure_residues = list()
+        for chain in self.structureChains:
+            structure_residues += chain.residues
         topology_residues = [ residue for residue in self.topology.residues() ]
 
         # Sanity check: Make sure residue info matches up.
