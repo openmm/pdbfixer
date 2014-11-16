@@ -466,13 +466,15 @@ class PDBFixer(object):
 
         return
 
-    def removeResiduesFromChains(self, residueStart, residueEnd, chainIndices=None, chainIds=None):
-        """Remove a set of residues from all or specified chains.
+    def removeResiduesFromChains(self, retainStart, retainEnd, chainIndices=None, chainIds=None):
+        """Remove all residues except the specified span (inclusive).
 
-        If no chains are specified, the residue span is removed from all chains.
+        If no chains are specified, only the residue span is retained from all chains.
 
         Parameters
         ----------
+        retainStart, retainEnd : int
+            Initial and final residues (inclusive) in span to retain; all other residues from specified chains are removed.
         chainIndices : list of int, optional, default=None
             List of indices of chains from which residues are to be removed.
         chainIds : list of str, optional, default=None
@@ -484,17 +486,17 @@ class PDBFixer(object):
         Load a PDB file with two chains and eliminate specified residues from both chains.
 
         >>> fixer = PDBFixer(pdbid='4JSV')
-        >>> fixer.removeResiduesFromChains(1385, 2001)
+        >>> fixer.removeResiduesFromChains(2001, 2549)
 
         Load a PDB file with two chains and eliminate specified residues from chain B.
 
         >>> fixer = PDBFixer(pdbid='4JSV')
-        >>> fixer.removeResiduesFromChains(1385, 2001, chainIds=['B'])
+        >>> fixer.removeResiduesFromChains(2001, 2549, chainIds=['B'])
 
         Load a PDB file with two chains and eliminate specified residues from the second chain.
 
         >>> fixer = PDBFixer(pdbid='4JSV')
-        >>> fixer.removeResiduesFromChains(1385, 2001, chainIndices=[1])
+        >>> fixer.removeResiduesFromChains(2001, 2549, chainIndices=[1])
 
         """
         # Iterate of residues from structure and topology at the same time.
@@ -534,7 +536,7 @@ class PDBFixer(object):
         for chain in chains:
             for structure_residue in chain.residues:
                 topology_residue = structure_to_topology[structure_residue]
-                if (structure_residue.number >= residueStart) and (structure_residue.number <= residueEnd):
+                if (structure_residue.number < retainStart) or (structure_residue.number > retainEnd):
                     # Add to queue for deletion.
                     topology_residues_to_delete.append(topology_residue)
                     structure_residues_to_delete.append((chain, structure_residue))
