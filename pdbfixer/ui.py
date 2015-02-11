@@ -29,7 +29,7 @@ def loadImageFile(name):
     if name not in cachedImages:
         imagePath = os.path.join(os.path.dirname(__file__), 'images')
         file = os.path.join(imagePath, name)
-        cachedImages[name] = open(file).read()
+        cachedImages[name] = open(file, 'rb').read()
     return cachedImages[name]
 
 def controlsCallback(parameters, handler):
@@ -61,8 +61,15 @@ def startPageCallback(parameters, handler):
             id = parameters.getfirst('pdbid')
             try:
                 fixer = PDBFixer(pdbid=id)
-            except:
-                handler.sendResponse(header+"Unable to download the PDB file. This may indicate an invalid PDB identifier, or an error in network connectivity."+loadHtmlFile("error.html"))
+            except Exception as e:
+                import traceback
+                print(traceback.format_exc())
+                handler.sendResponse(
+                    header + "<p>Unable to download the PDB file. " +
+                    "This may indicate an invalid PDB identifier, " +
+                    "or an error in network connectivity.</p>" +
+                    "<p>{}</p>".format(e) +
+                    loadHtmlFile("error.html"))
         displayDeleteChainsPage()
 
 def deleteChainsPageCallback(parameters, handler):
