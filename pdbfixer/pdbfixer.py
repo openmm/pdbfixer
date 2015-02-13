@@ -28,6 +28,7 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
+from __future__ import absolute_import
 __author__ = "Peter Eastman"
 __version__ = "1.1"
 
@@ -207,7 +208,7 @@ class PDBFixer(object):
             self.source = url
             file = urlopen(url)
             # Read contents all at once and split into lines, since urlopen doesn't like it when we read one line at a time over the network.
-            contents = file.read()
+            contents = file.read().decode('utf-8')
             lines = contents.split('\n')
             file.close()
             structure = PdbStructure(lines)
@@ -1027,8 +1028,7 @@ class PDBFixer(object):
 def main():
     if len(sys.argv) < 2:
         # Display the UI.
-        
-        import ui
+        from . import ui
         ui.launchUI()
     else:
         # Run in command line mode.
