@@ -46,7 +46,7 @@ class _Handler(BaseHTTPRequestHandler):
         self.send_header("Content-type", type)
         self.send_header("Content-length", str(len(response)))
         self.end_headers()
-        if sys.version_info.major > 2:
+        if sys.version_info.major > 2 and isinstance(response, str):
             response = bytes(response, 'UTF-8')
         self.wfile.write(response)
     
