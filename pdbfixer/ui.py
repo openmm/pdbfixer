@@ -83,7 +83,7 @@ def addResiduesPageCallback(parameters, handler):
     for i, key in enumerate(keys):
         if 'add'+str(i) not in parameters:
             del fixer.missingResidues[key]
-    displayMissingAtomsPage()
+    displayConvertResiduesPage()
 
 def convertResiduesPageCallback(parameters, handler):
     for i in range(len(fixer.nonstandardResidues)):
@@ -144,7 +144,7 @@ def displayDeleteChainsPage():
             content = "DNA"
         else:
             content = ', '.join(set(residues))
-        table += '    <tr><td>%d</td><td>%d</td><td>%s</td><td><input type="checkbox" name="include%d" checked></td></tr>\n' % (chain.index+1, len(residues), content, i)
+        table += '    <tr><td>%s</td><td>%d</td><td>%s</td><td><input type="checkbox" name="include%d" checked></td></tr>\n' % (chain.id, len(residues), content, i)
     uiserver.setContent(header+loadHtmlFile("removeChains.html") % (numChains, table))
 
 def displayAddResiduesPage():
@@ -154,14 +154,16 @@ def displayAddResiduesPage():
         displayConvertResiduesPage()
         return
     table = ""
+    chains = list(fixer.topology.chains())
     for i, key in enumerate(sorted(fixer.missingResidues)):
         residues = fixer.missingResidues[key]
-        chain = fixer.structureChains[key[0]]
-        if key[1] < len(chain.residues):
-            offset = chain.residues[key[1]].number-len(residues)-1
+        chain = chains[key[0]]
+        chainResidues = list(chain.residues())
+        if key[1] < len(chainResidues):
+            offset = int(chainResidues[key[1]].id)-len(residues)-1
         else:
-            offset = chain.residues[-1].number
-        table += '    <tr><td>%d</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (key[0]+1, offset+1, offset+len(residues), ', '.join(residues), i)
+            offset = int(chainResidues[-1].id)
+        table += '    <tr><td>%s</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (chain.id, offset+1, offset+len(residues), ', '.join(residues), i)
     uiserver.setContent(header+loadHtmlFile("addResidues.html") % table)
 
 def displayConvertResiduesPage():
@@ -170,10 +172,6 @@ def displayConvertResiduesPage():
     if len(fixer.nonstandardResidues) == 0:
         displayMissingAtomsPage()
         return
-    indexInChain = {}
-    for structChain, topChain in zip(fixer.structureChains, fixer.topology.chains()):
-        for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
-            indexInChain[topResidue] = structResidue.number
     table = ''
     nucleotides = ['DA', 'DC', 'DG', 'DT', 'A', 'C', 'G', 'T']
     for i in range(len(fixer.nonstandardResidues)):
@@ -188,7 +186,7 @@ def displayConvertResiduesPage():
             if res == replaceWith:
                 selected = ' selected'
             options += '<option value="%s"%s>%s</option>' % (res, selected, res)
-        table += '    <tr><td>%d</td><td>%s %d</td><td><select name="residue%d">%s</select></td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], i, options, i)
+        table += '    <tr><td>%s</td><td>%s %s</td><td><select name="residue%d">%s</select></td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.id, residue.name, residue.id, i, options, i)
     uiserver.setContent(header+loadHtmlFile("convertResidues.html") % table)
 
 def displayMissingAtomsPage():
@@ -200,10 +198,6 @@ def displayMissingAtomsPage():
         fixer.addMissingAtoms()
         displayAddHydrogensPage()
         return
-    indexInChain = {}
-    for structChain, topChain in zip(fixer.structureChains, fixer.topology.chains()):
-        for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
-            indexInChain[topResidue] = structResidue.number
     table = ""
     for residue in allResidues:
         atoms = []
@@ -211,7 +205,7 @@ def displayMissingAtomsPage():
             atoms.extend(atom.name for atom in fixer.missingAtoms[residue])
         if residue in fixer.missingTerminals:
             atoms.extend(atom for atom in fixer.missingTerminals[residue])
-        table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], ', '.join(atoms))
+        table += '    <tr><td>%s</td><td>%s %s</td><td>%s</td></tr>\n' % (residue.chain.id, residue.name, residue.id, ', '.join(atoms))
     uiserver.setContent(header+loadHtmlFile("addHeavyAtoms.html") % table)
 
 def displayAddHydrogensPage():
