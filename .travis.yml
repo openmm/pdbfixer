@@ -12,7 +12,7 @@ install:
     - sudo pip install conda eventlet
     - sudo conda init
     - conda config --add channels http://conda.binstar.org/omnia
-    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm
+    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm-dev
     - export PATH="$HOME/envs/test/bin/:$PATH"
     
 script:
