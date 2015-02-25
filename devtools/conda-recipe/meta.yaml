@@ -19,9 +19,9 @@ test:
     - nose
 
   commands:
-    - nosetests --with-doctest --nocapture
+    - nosetests pdbfixer --nocapture --verbosity=2 --with-doctest
 
 about:
-  home: http://github.com/simtk/pdbfixer
+  home: http://github.com/pandegroup/pdbfixer
   license: free
   summary: PDBFixer fixes problems in PDB files to prepare them for molecular simulation.
