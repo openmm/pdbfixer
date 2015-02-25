@@ -1,25 +1,33 @@
 language: c
 
 env:
-    matrix:
-        - CONDA_PY=2.7
-        - CONDA_PY=3.3
-        - CONDA_PY=3.4
+  matrix:
+    - CONDA_PY=2.7
+    - CONDA_PY=3.3
+    - CONDA_PY=3.4
 
 install:
-    - sudo apt-get update -qq
-    - sudo apt-get install -qq python-dev python-pip python-yaml g++ ftp
-    - sudo pip install conda eventlet
-    - sudo conda init
-    - conda config --add channels http://conda.binstar.org/omnia
-    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm-dev
-    - export PATH="$HOME/envs/test/bin/:$PATH"
-    
+  - source devtools/ci/install.sh
+  - export PYTHONUNBUFFERED=true
+#    - sudo apt-get update -qq
+#    - sudo apt-get install -qq python-dev python-pip python-yaml g++ ftp
+#    - sudo pip install conda eventlet
+#    - sudo conda init
+#    - conda config --add channels http://conda.binstar.org/omnia
+#    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm-dev
+#    - export PATH="$HOME/envs/test/bin/:$PATH"
+
 script:
-    - python setup.py install
-    - cd tests
-    - nosetests --with-doctest
+  # this builds the binary, unpacks it, and runs the tests
+  - conda build devtools/conda-recipe
+  # - python setup.py install
+  # - cd tests
+  # - nosetests --with-doctest
 
 after_script:
-    - pyflakes pdbfixer/*.py
+  - pyflakes pdbfixer/*.py
+
+after_success:
+  - echo "after_success"
+  - bash -x devtools/ci/after_sucess.sh
 
