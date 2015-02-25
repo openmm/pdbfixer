@@ -15,6 +15,9 @@ requirements:
     - numpy
 
 test:
+  requires:
+    - nose
+
   commands:
     - nosetests --with-doctest --nocapture
 
