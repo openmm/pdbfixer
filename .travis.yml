@@ -1,11 +1,18 @@
 language: c
+
+env:
+    matrix:
+        - CONDA_PY=2.7
+        - CONDA_PY=3.3
+        - CONDA_PY=3.4
+
 install:
     - sudo apt-get update -qq
     - sudo apt-get install -qq python-dev python-pip python-yaml g++ ftp
     - sudo pip install conda eventlet
     - sudo conda init
     - conda config --add channels http://conda.binstar.org/omnia
-    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm
+    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm-dev
     - export PATH="$HOME/envs/test/bin/:$PATH"
     
 script:

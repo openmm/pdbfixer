@@ -1,13 +1,15 @@
-import simtk.openmm.app as app
-from simtk.openmm.app.internal.pdbstructure import PdbStructure
-import simtk.unit as unit
-from pdbfixer import PDBFixer, substitutions, proteinResidues, dnaResidues, rnaResidues
-import uiserver
+from __future__ import absolute_import
+
 import webbrowser
 import os.path
-import gzip
 import time
-from io import BytesIO
+
+import simtk.openmm.app as app
+import simtk.unit as unit
+
+from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues
+from . import uiserver
+
 try:
     from urllib.request import urlopen
     from io import StringIO
@@ -27,7 +29,7 @@ def loadImageFile(name):
     if name not in cachedImages:
         imagePath = os.path.join(os.path.dirname(__file__), 'images')
         file = os.path.join(imagePath, name)
-        cachedImages[name] = open(file).read()
+        cachedImages[name] = open(file, 'rb').read()
     return cachedImages[name]
 
 def controlsCallback(parameters, handler):
@@ -53,13 +55,21 @@ def startPageCallback(parameters, handler):
     global fixer
     if 'type' in parameters:
         if parameters.getfirst('type') == 'local':
-            fixer = PDBFixer(file=parameters['pdbfile'].value.decode().splitlines())
+            fixer = PDBFixer(pdbfile=parameters['pdbfile'].value.decode().splitlines())
+            fixer.source = parameters['pdbfile'].filename
         else:
             id = parameters.getfirst('pdbid')
             try:
                 fixer = PDBFixer(pdbid=id)
-            except:
-                handler.sendResponse(header+"Unable to download the PDB file. This may indicate an invalid PDB identifier, or an error in network connectivity."+loadHtmlFile("error.html"))
+            except Exception as e:
+                import traceback
+                print(traceback.format_exc())
+                handler.sendResponse(
+                    header + "<p>Unable to download the PDB file. " +
+                    "This may indicate an invalid PDB identifier, " +
+                    "or an error in network connectivity.</p>" +
+                    "<p>{}</p>".format(e) +
+                    loadHtmlFile("error.html"))
         displayDeleteChainsPage()
 
 def deleteChainsPageCallback(parameters, handler):
@@ -73,7 +83,7 @@ def addResiduesPageCallback(parameters, handler):
     for i, key in enumerate(keys):
         if 'add'+str(i) not in parameters:
             del fixer.missingResidues[key]
-    displayMissingAtomsPage()
+    displayConvertResiduesPage()
 
 def convertResiduesPageCallback(parameters, handler):
     for i in range(len(fixer.nonstandardResidues)):
@@ -134,7 +144,7 @@ def displayDeleteChainsPage():
             content = "DNA"
         else:
             content = ', '.join(set(residues))
-        table += '    <tr><td>%d</td><td>%d</td><td>%s</td><td><input type="checkbox" name="include%d" checked></td></tr>\n' % (chain.index+1, len(residues), content, i)
+        table += '    <tr><td>%s</td><td>%d</td><td>%s</td><td><input type="checkbox" name="include%d" checked></td></tr>\n' % (chain.id, len(residues), content, i)
     uiserver.setContent(header+loadHtmlFile("removeChains.html") % (numChains, table))
 
 def displayAddResiduesPage():
@@ -144,14 +154,16 @@ def displayAddResiduesPage():
         displayConvertResiduesPage()
         return
     table = ""
+    chains = list(fixer.topology.chains())
     for i, key in enumerate(sorted(fixer.missingResidues)):
         residues = fixer.missingResidues[key]
-        chain = fixer.structureChains[key[0]]
-        if key[1] < len(chain.residues):
-            offset = chain.residues[key[1]].number-len(residues)-1
+        chain = chains[key[0]]
+        chainResidues = list(chain.residues())
+        if key[1] < len(chainResidues):
+            offset = int(chainResidues[key[1]].id)-len(residues)-1
         else:
-            offset = chain.residues[-1].number
-        table += '    <tr><td>%d</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (key[0]+1, offset+1, offset+len(residues), ', '.join(residues), i)
+            offset = int(chainResidues[-1].id)
+        table += '    <tr><td>%s</td><td>%d to %d</td><td>%s</td><td><input type="checkbox" name="add%d" checked></td></tr>\n' % (chain.id, offset+1, offset+len(residues), ', '.join(residues), i)
     uiserver.setContent(header+loadHtmlFile("addResidues.html") % table)
 
 def displayConvertResiduesPage():
@@ -160,10 +172,6 @@ def displayConvertResiduesPage():
     if len(fixer.nonstandardResidues) == 0:
         displayMissingAtomsPage()
         return
-    indexInChain = {}
-    for structChain, topChain in zip(fixer.structureChains, fixer.topology.chains()):
-        for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
-            indexInChain[topResidue] = structResidue.number
     table = ''
     nucleotides = ['DA', 'DC', 'DG', 'DT', 'A', 'C', 'G', 'T']
     for i in range(len(fixer.nonstandardResidues)):
@@ -178,7 +186,7 @@ def displayConvertResiduesPage():
             if res == replaceWith:
                 selected = ' selected'
             options += '<option value="%s"%s>%s</option>' % (res, selected, res)
-        table += '    <tr><td>%d</td><td>%s %d</td><td><select name="residue%d">%s</select></td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], i, options, i)
+        table += '    <tr><td>%s</td><td>%s %s</td><td><select name="residue%d">%s</select></td><td><input type="checkbox" name="convert%d" checked></td></tr>\n' % (residue.chain.id, residue.name, residue.id, i, options, i)
     uiserver.setContent(header+loadHtmlFile("convertResidues.html") % table)
 
 def displayMissingAtomsPage():
@@ -190,10 +198,6 @@ def displayMissingAtomsPage():
         fixer.addMissingAtoms()
         displayAddHydrogensPage()
         return
-    indexInChain = {}
-    for structChain, topChain in zip(fixer.structureChains, fixer.topology.chains()):
-        for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
-            indexInChain[topResidue] = structResidue.number
     table = ""
     for residue in allResidues:
         atoms = []
@@ -201,7 +205,7 @@ def displayMissingAtomsPage():
             atoms.extend(atom.name for atom in fixer.missingAtoms[residue])
         if residue in fixer.missingTerminals:
             atoms.extend(atom for atom in fixer.missingTerminals[residue])
-        table += '    <tr><td>%d</td><td>%s %d</td><td>%s</td></tr>\n' % (residue.chain.index+1, residue.name, indexInChain[residue], ', '.join(atoms))
+        table += '    <tr><td>%s</td><td>%s %s</td><td>%s</td></tr>\n' % (residue.chain.id, residue.name, residue.id, ', '.join(atoms))
     uiserver.setContent(header+loadHtmlFile("addHeavyAtoms.html") % table)
 
 def displayAddHydrogensPage():

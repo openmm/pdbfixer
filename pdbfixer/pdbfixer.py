@@ -6,7 +6,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2013-2014 Stanford University and the Authors.
+Portions copyright (c) 2013-2015 Stanford University and the Authors.
 Authors: Peter Eastman
 Contributors:
 
@@ -28,6 +28,7 @@ DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
+from __future__ import absolute_import
 __author__ = "Peter Eastman"
 __version__ = "1.1"
 
@@ -207,7 +208,7 @@ class PDBFixer(object):
             self.source = url
             file = urlopen(url)
             # Read contents all at once and split into lines, since urlopen doesn't like it when we read one line at a time over the network.
-            contents = file.read()
+            contents = file.read().decode('utf-8')
             lines = contents.split('\n')
             file.close()
             structure = PdbStructure(lines)
@@ -221,7 +222,6 @@ class PDBFixer(object):
         self.pdb = app.PDBFile(structure)
         self.topology = self.pdb.topology
         self.positions = self.pdb.positions
-        self.structureChains = list(self.structure.iter_chains())
         
         # Load the templates.
         
@@ -462,7 +462,6 @@ class PDBFixer(object):
         modeller.delete(allChains[i] for i in chainIndices)
         self.topology = modeller.topology
         self.positions = modeller.positions
-        self.structureChains = [self.structureChains[i] for i in range(len(self.structureChains)) if i not in chainIndices]
 
         return
     
@@ -481,17 +480,17 @@ class PDBFixer(object):
         >>> missing_residues = fixer.missingResidues
 
         """
-        chains = [c for c in self.structureChains if any(atom.record_name == 'ATOM' for atom in c.iter_atoms())]
+        chains = [c for c in self.topology.chains() if len(list(c.residues())) > 0]
         chainWithGaps = {}
         
         # Find the sequence of each chain, with gaps for missing residues.
         
         for chain in chains:
-            minResidue = min(r.number for r in chain.iter_residues())
-            maxResidue = max(r.number for r in chain.iter_residues())
+            minResidue = min(int(r.id) for r in chain.residues())
+            maxResidue = max(int(r.id) for r in chain.residues())
             residues = [None]*(maxResidue-minResidue+1)
-            for r in chain.iter_residues():
-                residues[r.number-minResidue] = r.get_name()
+            for r in chain.residues():
+                residues[int(r.id)-minResidue] = r.name
             chainWithGaps[chain] = residues
         
         # Try to find the chain that matches each sequence.
@@ -500,7 +499,7 @@ class PDBFixer(object):
         chainOffset = {}
         for sequence in self.structure.sequences:
             for chain in chains:
-                if chain.chain_id != sequence.chain_id:
+                if chain.id != sequence.chain_id:
                     continue
                 if chain in chainSequence:
                     continue
@@ -515,15 +514,15 @@ class PDBFixer(object):
         # Now build the list of residues to add.
         
         self.missingResidues = {}
-        for structChain, topChain in zip(self.structureChains, self.topology.chains()):
-            if structChain in chainSequence:
-                offset = chainOffset[structChain]
-                sequence = chainSequence[structChain].residues
-                gappedSequence = chainWithGaps[structChain]
+        for chain in self.topology.chains():
+            if chain in chainSequence:
+                offset = chainOffset[chain]
+                sequence = chainSequence[chain].residues
+                gappedSequence = chainWithGaps[chain]
                 index = 0
                 for i in range(len(sequence)):
                     if i < offset or i >= len(gappedSequence)+offset or gappedSequence[i-offset] is None:
-                        key = (topChain.index, index)
+                        key = (chain.index, index)
                         if key not in self.missingResidues:
                             self.missingResidues[key] = []
                         residueName = sequence[i]
@@ -556,16 +555,16 @@ class PDBFixer(object):
         
         # Now add ones based on MODRES records.
         
-        modres = dict(((m.chain_id, m.number, m.residue_name), m.standard_name) for m in self.structure.modified_residues)
-        for structChain, topChain in zip(self.structureChains, self.topology.chains()):
-            for structResidue, topResidue in zip(structChain.iter_residues(), topChain.residues()):
-                key = (structChain.chain_id, structResidue.number, structResidue.name)
+        modres = dict(((m.chain_id, str(m.number), m.residue_name), m.standard_name) for m in self.structure.modified_residues)
+        for chain in self.topology.chains():
+            for residue in chain.residues():
+                key = (chain.id, residue.id, residue.name)
                 if key in modres:
                     replacement = modres[key]
                     if replacement == 'DU':
                         replacement = 'DT'
                     if replacement in self.templates:
-                        nonstandard[topResidue] = replacement
+                        nonstandard[residue] = replacement
         self.nonstandardResidues = [(r, nonstandard[r]) for r in sorted(nonstandard, key=lambda r: r.index)]
     
     def replaceNonstandardResidues(self):
@@ -1027,8 +1026,7 @@ class PDBFixer(object):
 def main():
     if len(sys.argv) < 2:
         # Display the UI.
-        
-        import ui
+        from . import ui
         ui.launchUI()
     else:
         # Run in command line mode.
