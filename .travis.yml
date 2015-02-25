@@ -6,28 +6,24 @@ env:
     - CONDA_PY=3.3
     - CONDA_PY=3.4
 
+  global:
+    # BINSTAR_TOKEN
+    - secure: "cnxHeIjLZF279xukl4VXXr/wTcQALeOek9a//ngFahvRA/GA/ysFWZ5UdDrH9fSN9bom1Q5zAsnmV/53deVtbcJ4CzUVAsug3TJtRnPEs42LJP8AQrTxlF5tgonHxC1IKxpJ47wezTBebRVe6223BV1J5fATnrploZeHPVq4/Do="
+
 install:
   - source devtools/ci/install.sh
   - export PYTHONUNBUFFERED=true
-#    - sudo apt-get update -qq
-#    - sudo apt-get install -qq python-dev python-pip python-yaml g++ ftp
-#    - sudo pip install conda eventlet
-#    - sudo conda init
-#    - conda config --add channels http://conda.binstar.org/omnia
-#    - conda create --yes --name test nose setuptools numpy biopython pyflakes openmm-dev
-#    - export PATH="$HOME/envs/test/bin/:$PATH"
 
 script:
-  # this builds the binary, unpacks it, and runs the tests
+  # Build the conda package, running tests as part of the build.
   - conda build devtools/conda-recipe
-  # - python setup.py install
-  # - cd tests
-  # - nosetests --with-doctest
 
 after_script:
+  # Run pyflakes.
   - pyflakes pdbfixer/*.py
 
 after_success:
   - echo "after_success"
+  # Upload conda dev package to binstar if all tests pass.
   - bash -x devtools/ci/after_sucess.sh
 
