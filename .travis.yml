@@ -8,7 +8,7 @@ env:
 
   global:
     # BINSTAR_TOKEN
-    - secure: "cnxHeIjLZF279xukl4VXXr/wTcQALeOek9a//ngFahvRA/GA/ysFWZ5UdDrH9fSN9bom1Q5zAsnmV/53deVtbcJ4CzUVAsug3TJtRnPEs42LJP8AQrTxlF5tgonHxC1IKxpJ47wezTBebRVe6223BV1J5fATnrploZeHPVq4/Do="
+    - secure: "T7qEO3BVXdEP3J4bqE8X882KrdGD4L0cwbAjX/SZMm8e8bG/qmv7XWkxIDp/HakR5GlGr3EBGQDJi5g2CbmFwHjxXMbZ4Y0a3dvoCvfdBNUpBZcjPSil2X976aEkTR1MAL8X7VjuY4lwogqO2WU7Kzm1QaFWjWEl1fV/zxHYN9w="
 
 install:
   - source devtools/ci/install.sh
@@ -25,5 +25,5 @@ after_script:
 after_success:
   - echo "after_success"
   # Upload conda dev package to binstar if all tests pass.
-  - bash -x devtools/ci/after_sucess.sh
+  - bash devtools/ci/after_sucess.sh
 
