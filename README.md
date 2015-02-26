@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/SimTk/pdbfixer.svg)](https://travis-ci.org/SimTk/pdbfixer)
+[![Build Status](https://travis-ci.org/pandegroup/pdbfixer.svg)](https://travis-ci.org/pandegroup/pdbfixer)
 
 PDBFixer
 ========
@@ -14,4 +14,4 @@ PDBFixer is an easy to use application for fixing problems in Protein Data Bank 
 - Delete unwanted heterogens.
 - Build a water box for explicit solvent simulations.
 
-See our [manual](http://htmlpreview.github.io/?https://raw.github.com/SimTk/pdbfixer/master/Manual.html)
+See our [manual](http://htmlpreview.github.io/?https://raw.github.com/pandegroup/pdbfixer/master/Manual.html)
