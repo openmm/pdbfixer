@@ -155,30 +155,23 @@ class PDBFixer(object):
             
         Examples
         --------
-        
-        Start from a file object.
-
-        >>> pdbid = '1VII'
-        >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
-        >>> file = urlopen(url)
-        >>> fixer = PDBFixer(pdbfile=file)
 
         Start from a filename.
         
-        >>> filename = 'test.pdb'
-        >>> file = urlopen(url)
-        >>> outfile = open(filename, 'w')
-        >>> outfile.write(file.read())
-        >>> outfile.close()
-        >>> fixer = PDBFixer(filename=filename)
+        >>> fixer = PDBFixer(filename='test.pdb')
+        
+        Start from a file object.
+
+        >>> with open('test.pdb') as f:
+        ...     fixer = PDBFixer(pdbfile=f)
         
         Start from a URL.
 
-        >>> fixer = PDBFixer(url=url)
+        >>> fixer = PDBFixer(url='http://www.rcsb.org/pdb/files/1VII.pdb')
 
         Start from a PDB code.
         
-        >>> fixer = PDBFixer(pdbid=pdbid)
+        >>> fixer = PDBFixer(pdbid='1VII')
 
         """
 
