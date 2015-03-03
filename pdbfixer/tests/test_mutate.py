@@ -10,7 +10,7 @@ def test_mutate_1():
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()        
     fixer.addMissingHydrogens(7.0)
-    temp_pdb = tempfile.NamedTemporaryFile()
+    temp_pdb = tempfile.NamedTemporaryFile(mode='w+')
     app.PDBFile.writeFile(fixer.topology, fixer.positions, temp_pdb)
     pdb = app.PDBFile(temp_pdb.name)
     
@@ -30,7 +30,7 @@ def test_mutate_2():
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()        
     fixer.addMissingHydrogens(7.0)
-    temp_pdb = tempfile.NamedTemporaryFile()
+    temp_pdb = tempfile.NamedTemporaryFile(mode='w+')
     new_residue57 = list(fixer.topology.residues())[16]
     new_residue56 = list(fixer.topology.residues())[15]
     assert new_residue57.name == "LEU", "Name of mutated residue did not change correctly!"
