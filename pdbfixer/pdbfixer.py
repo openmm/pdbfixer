@@ -45,6 +45,8 @@ import os
 import os.path
 import math
 
+from pkg_resources import resource_filename
+
 # Imports for urlopen
 if sys.version_info >= (3,0):
     from urllib.request import urlopen
@@ -156,29 +158,23 @@ class PDBFixer(object):
         Examples
         --------
         
-        Start from a file object.
-
-        >>> pdbid = '1VII'
-        >>> url = 'http://www.rcsb.org/pdb/files/%s.pdb' % pdbid
-        >>> file = urlopen(url)
-        >>> fixer = PDBFixer(pdbfile=file)
-
         Start from a filename.
         
-        >>> filename = 'test.pdb'
-        >>> file = urlopen(url)
-        >>> outfile = open(filename, 'w')
-        >>> outfile.write(file.read())
-        >>> outfile.close()
+        >>> filename = resource_filename('pdbfixer', 'tests/data/test.pdb')
         >>> fixer = PDBFixer(filename=filename)
-        
+
+        Start from a file object.
+
+        >>> with open(filename) as f:
+        ...     fixer = PDBFixer(pdbfile=f)
+
         Start from a URL.
 
-        >>> fixer = PDBFixer(url=url)
+        >>> fixer = PDBFixer(url='http://www.rcsb.org/pdb/files/1VII.pdb')
 
         Start from a PDB code.
         
-        >>> fixer = PDBFixer(pdbid=pdbid)
+        >>> fixer = PDBFixer(pdbid='1VII')
 
         """
 
