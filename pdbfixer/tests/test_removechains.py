@@ -1,5 +1,4 @@
-from nose.tools import ok_, eq_, raises
-from unittest.TestCase import assertItemsEqual
+from nose.tools import ok_, eq_, raises, assert_list_equal
 import simtk.openmm.app as app
 import pdbfixer
 import tempfile
@@ -11,7 +10,7 @@ def remove_chain_ids_and_verify(pdbid, chain_ids_to_remove, expected_chain_ids_r
     fixer.removeChains(chainIds=chain_ids_to_remove)
     # Check to make sure asserted chains remain.
     chain_ids_remaining = [c.id for c in fixer.topology.chains()]
-    assertItemsEqual(chain_ids_remaining, expected_chain_ids_remaining)
+    assert_list_equal(chain_ids_remaining, expected_chain_ids_remaining)
 
 def test_removechain_ids():
     remove_chain_ids_and_verify('4JSV', [], ['B', 'D', 'A', 'C', 'B', 'A'])
