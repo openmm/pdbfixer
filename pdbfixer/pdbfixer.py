@@ -264,7 +264,7 @@ class PDBFixer(object):
             if omitUnknownMolecules and not any(residue.name in self.templates for residue in chain.residues()):
                 continue
             chainResidues = list(chain.residues())
-            newChain = newTopology.addChain()
+            newChain = newTopology.addChain(chain.id)
             for indexInChain, residue in enumerate(chain.residues()):
                 
                 # Insert missing residues here.
@@ -282,11 +282,12 @@ class PDBFixer(object):
                             outward *= len(insertHere)*0.5*unit.nanometer/norm
                         startPosition = endPosition+outward
                         loopDirection = None
-                    self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, loopDirection, residue, newAtoms, newPositions)
+                    firstIndex = int(residue.id)-len(insertHere)
+                    self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, loopDirection, residue, newAtoms, newPositions, firstIndex)
                 
                 # Create the new residue and add existing heavy atoms.
                                 
-                newResidue = newTopology.addResidue(residue.name, newChain)
+                newResidue = newTopology.addResidue(residue.name, newChain, residue.id)
                 addResiduesAfter = (residue == chainResidues[-1] and (chain.index, indexInChain+1) in self.missingResidues)
                 for atom in residue.atoms():
                     if not heavyAtomsOnly or (atom.element is not None and atom.element != hydrogen):
@@ -337,7 +338,8 @@ class PDBFixer(object):
                         if norm > 0*unit.nanometer:
                             outward *= len(insertHere)*0.5*unit.nanometer/norm
                         endPosition = startPosition+outward
-                        self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, None, residue, newAtoms, newPositions)
+                        firstIndex = int(residue.id)+1
+                        self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, None, residue, newAtoms, newPositions, firstIndex)
                         newResidue = list(newChain.residues())[-1]
                         if newResidue.name in proteinResidues:
                             terminalsToAdd = ['OXT']
@@ -369,7 +371,7 @@ class PDBFixer(object):
         """Compute the centroid of a residue."""
         return unit.sum([self.pdb.positions[atom.index] for atom in residue.atoms()])/len(list(residue.atoms()))
     
-    def _addMissingResiduesToChain(self, chain, residueNames, startPosition, endPosition, loopDirection, orientTo, newAtoms, newPositions):
+    def _addMissingResiduesToChain(self, chain, residueNames, startPosition, endPosition, loopDirection, orientTo, newAtoms, newPositions, firstIndex):
         """Add a series of residues to a chain."""
         orientToPositions = dict((atom.name, self.positions[atom.index]) for atom in orientTo.atoms())
         if loopDirection is None:
@@ -401,7 +403,7 @@ class PDBFixer(object):
             
             # Create the new residue.
             
-            newResidue = chain.topology.addResidue(residueName, chain)
+            newResidue = chain.topology.addResidue(residueName, chain, "%d" % ((firstIndex+i)%10000))
             fraction = (i+1.0)/(numResidues+1.0)
             translate = startPosition + (endPosition-startPosition)*fraction + loopHeight*math.sin(fraction*math.pi)*loopDirection
             templateAtoms = list(template.topology.atoms())
@@ -932,6 +934,11 @@ class PDBFixer(object):
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
         modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        chains = list(modeller.topology.chains())
+        if len(chains) == 1:
+            chains[0].id = 'A'
+        else:
+            chains[-1].id = chr(ord(chains[-2].id)+1)
         self.topology = modeller.topology
         self.positions = modeller.positions
     
@@ -1069,7 +1076,7 @@ def main():
         with open(options.output, 'w') as f:
             if fixer.source is not None:
                 f.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
-            app.PDBFile.writeFile(fixer.topology, fixer.positions, f)
+            app.PDBFile.writeFile(fixer.topology, fixer.positions, f, True)
 
 if __name__ == '__main__':
     main()

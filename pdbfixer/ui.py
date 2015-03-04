@@ -118,7 +118,7 @@ def saveFilePageCallback(parameters, handler):
         output = StringIO()
         if fixer.source is not None:
             output.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
-        app.PDBFile.writeFile(fixer.topology, fixer.positions, output)
+        app.PDBFile.writeFile(fixer.topology, fixer.positions, output, True)
         handler.sendDownload(output.getvalue(), 'output.pdb')
     else:
         displayStartPage()
