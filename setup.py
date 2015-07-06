@@ -34,7 +34,7 @@ from setuptools import setup, find_packages
 DOCLINES = __doc__.split("\n")
 
 ########################
-__version__ = '1.0'
+__version__ = '1.2'
 VERSION = __version__
 ISRELEASED = False
 ########################
@@ -61,43 +61,6 @@ def find_package_data():
             files.append(relpath(join(root, fn), 'pdbfixer'))
     return files
 
-
-def check_dependencies():
-    from distutils.version import StrictVersion
-    found_openmm = True
-    found_openmm_52_or_later = True
-    found_numpy = True
-
-    try:
-        from simtk import openmm
-        openmm_version = StrictVersion(openmm.Platform.getOpenMMVersion())
-        if openmm_version < StrictVersion('5.2'):
-            found_openmm_52_or_later = False
-    except ImportError as err:
-        found_openmm = False
-
-    try:
-        import numpy
-    except:
-        found_numpy = False
-
-    msg = None
-    bar = ('-' * 70) + "\n" + ('-' * 70)
-    if found_openmm:
-        if not found_openmm_52_or_later:
-            msg = [bar, '[Unmet Dependency] PDBFixer requires OpenMM version 5.2 or later. You have version %s.' % openmm_version, bar]
-    else:
-        msg = [bar, '[Unmet Dependency] PDBFixer requires the OpenMM python package. Refer to <http://openmm.org> for details and installation instructions.', bar]
-
-    if not found_numpy:
-        msg = [bar, '[Unmet Dependency] PDBFixer requires the numpy python package. Refer to <http://www.scipy.org/scipylib/download.html> for numpy installation instructions.', bar]
-
-    if msg is not None:
-        import textwrap
-        print()
-        print(os.linesep.join([line for e in msg for line in textwrap.wrap(e)]), file=sys.stderr)
-        #print('\n'.join(list(textwrap.wrap(e) for e in msg)))
-
 setup(
     name='pdbfixer',
     author='Peter Eastman',
@@ -111,7 +74,6 @@ setup(
     packages=find_packages(),
     package_data={'pdbfixer': find_package_data()},
     zip_safe=False,
-    install_requires=[],
+    install_requires=['numpy', 'openmm >= 6.3'],
     entry_points={'console_scripts': ['pdbfixer = pdbfixer.pdbfixer:main']})
 
-check_dependencies()
