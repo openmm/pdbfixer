@@ -13,8 +13,7 @@ Test command-line interface.
 # GLOBAL IMPORTS
 #=============================================================================================
 
-import tempfile
-import commands
+import subprocess
 
 from nose.plugins.skip import Skip, SkipTest
 
@@ -23,12 +22,12 @@ from nose.plugins.skip import Skip, SkipTest
 #=============================================================================================
 
 def run_cli(arguments, expected_output=None):
-    [status, output] = commands.getstatusoutput('pdbfixer ' + arguments)
-
-    if status:
-        message  = "An error return value (%s) was obtained:\n" % str(status)
+    try:
+        output = subprocess.check_output('pdbfixer ' + arguments)
+    except CalledProcessError as e:
+        message  = "An error return value (%s) was obtained:\n" % str(e.returncode)
         message += "\n"
-        message += output
+        message += e.output
         message += "\n"
         raise Exception(message)
 
