@@ -14,6 +14,7 @@ Test command-line interface.
 #=============================================================================================
 
 import subprocess
+from subprocess import CalledProcessError
 
 from nose.plugins.skip import Skip, SkipTest
 
