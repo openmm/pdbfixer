@@ -24,7 +24,7 @@ from nose.plugins.skip import Skip, SkipTest
 
 def run_cli(arguments, expected_output=None):
     try:
-        output = subprocess.check_output('pdbfixer ' + arguments)
+        output = subprocess.check_output('pdbfixer ' + arguments, shell=True)
     except CalledProcessError as e:
         message  = "An error return value (%s) was obtained:\n" % str(e.returncode)
         message += "\n"
