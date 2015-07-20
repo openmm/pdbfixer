@@ -1,6 +1,5 @@
 from nose.tools import ok_, eq_, raises, assert_list_equal
 import simtk.openmm.app as app
-import simtk.openmm.app.internal.pdbstructure
 import pdbfixer
 import tempfile
 import time
