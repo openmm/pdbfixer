@@ -11,11 +11,11 @@ except:
     from urllib2 import urlopen
     from cStringIO import StringIO
 
-def download_file():
-    file = urlopen('http://www.rcsb.org/pdb/files/4JSV.pdb')
-    return file.read().decode('utf-8')
+# Download the file once to avoid repeated requests to the PDB.
 
-def remove_chain_ids_and_verify(file_content, chain_ids_to_remove, expected_chain_ids_remaining):
+file_content = urlopen('http://www.rcsb.org/pdb/files/4JSV.pdb').read().decode('utf-8')
+
+def remove_chain_ids_and_verify(chain_ids_to_remove, expected_chain_ids_remaining):
     # Create a PDBFixer instance for the given pdbid
     fixer = pdbfixer.PDBFixer(pdbfile=StringIO(file_content))
     # Remove specified chains.
@@ -25,14 +25,13 @@ def remove_chain_ids_and_verify(file_content, chain_ids_to_remove, expected_chai
     assert_list_equal(chain_ids_remaining, expected_chain_ids_remaining)
 
 def test_removechain_ids():
-    content = download_file()
-    remove_chain_ids_and_verify(content, [], ['B', 'D', 'A', 'C', 'B', 'A'])
-    remove_chain_ids_and_verify(content, ['B', 'D'], ['A', 'C', 'A'])
-    remove_chain_ids_and_verify(content, ['A', 'C'], ['B', 'D', 'B'])
-    remove_chain_ids_and_verify(content, ['B', 'A'], ['D', 'C'])
-    remove_chain_ids_and_verify(content, ['B', 'D', 'A', 'C'], [])
+    remove_chain_ids_and_verify([], ['B', 'D', 'A', 'C', 'B', 'A'])
+    remove_chain_ids_and_verify(['B', 'D'], ['A', 'C', 'A'])
+    remove_chain_ids_and_verify(['A', 'C'], ['B', 'D', 'B'])
+    remove_chain_ids_and_verify(['B', 'A'], ['D', 'C'])
+    remove_chain_ids_and_verify(['B', 'D', 'A', 'C'], [])
 
-def remove_chain_indices_and_verify(file_content, chain_indices_to_remove, expected_chain_ids_remaining):
+def remove_chain_indices_and_verify(chain_indices_to_remove, expected_chain_ids_remaining):
     # Create a PDBFixer instance for the given pdbid
     fixer = pdbfixer.PDBFixer(pdbfile=StringIO(file_content))
     # Remove specified chains.
@@ -42,9 +41,8 @@ def remove_chain_indices_and_verify(file_content, chain_indices_to_remove, expec
     assert_list_equal(chain_ids_remaining, expected_chain_ids_remaining)
 
 def test_removechain_indices():
-    content = download_file()
-    remove_chain_indices_and_verify(content, [], ['B', 'D', 'A', 'C', 'B', 'A'])
-    remove_chain_indices_and_verify(content, [0, 1], ['A', 'C', 'B', 'A'])
-    remove_chain_indices_and_verify(content, [2, 3], ['B', 'D', 'B', 'A'])
-    remove_chain_indices_and_verify(content, [0, 2], ['D', 'C', 'B', 'A'])
-    remove_chain_indices_and_verify(content, [0, 1, 2, 3, 4, 5], [])
+    remove_chain_indices_and_verify([], ['B', 'D', 'A', 'C', 'B', 'A'])
+    remove_chain_indices_and_verify([0, 1], ['A', 'C', 'B', 'A'])
+    remove_chain_indices_and_verify([2, 3], ['B', 'D', 'B', 'A'])
+    remove_chain_indices_and_verify([0, 2], ['D', 'C', 'B', 'A'])
+    remove_chain_indices_and_verify([0, 1, 2, 3, 4, 5], [])
