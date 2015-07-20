@@ -1036,6 +1036,8 @@ def main():
         
         from optparse import OptionParser
         parser = OptionParser(usage="Usage: %prog\n       %prog [options] filename\n\nWhen run with no arguments, it launches the user interface.  If any arguments are specified, it runs in command line mode.")
+        parser.add_option('--pdbid', default=None, dest='pdbid', metavar='PDBID', help='PDB id to retrieve from RCSB [default: None]')
+        parser.add_option('--url', default=None, dest='url', metavar='URL', help='URL to retrieve PDB from [default: None]')
         parser.add_option('--output', default='output.pdb', dest='output', metavar='FILENAME', help='output pdb file [default: output.pdb]')
         parser.add_option('--add-atoms', default='all', dest='atoms', choices=('all', 'heavy', 'hydrogen', 'none'), help='which missing atoms to add: all, heavy, hydrogen, or none [default: all]')
         parser.add_option('--keep-heterogens', default='all', dest='heterogens', choices=('all', 'water', 'none'), metavar='OPTION', help='which heterogens to keep: all, water, or none [default: all]')
@@ -1046,37 +1048,54 @@ def main():
         parser.add_option('--positive-ion', default='Na+', dest='positiveIon', choices=('Cs+', 'K+', 'Li+', 'Na+', 'Rb+'), metavar='ION', help='positive ion to include in the water box: Cs+, K+, Li+, Na+, or Rb+ [default: Na+]')
         parser.add_option('--negative-ion', default='Cl-', dest='negativeIon', choices=('Cl-', 'Br-', 'F-', 'I-'), metavar='ION', help='negative ion to include in the water box: Cl-, Br-, F-, or I- [default: Cl-]')
         parser.add_option('--ionic-strength', type='float', default=0.0, dest='ionic', metavar='STRENGTH', help='molar concentration of ions to add to the water box [default: 0.0]')
+        parser.add_option('--verbose', default=False, action='store_true', dest='verbose', metavar='VERBOSE', help='Print verbose output')
         (options, args) = parser.parse_args()
-        if len(args) == 0:
+        if (len(args) == 0) and (options.pdbid==None) and (options.url==None):
             parser.error('No filename specified')
         if len(args) > 1:
-            parser.error('Must specify a single filename')
-        fixer = PDBFixer(filename=sys.argv[1])
+            parser.error('Must specify a single filename or --pdbid or --url')
+        if options.pdbid != None:
+            if options.verbose: print('Retrieving PDB "' + options.pdbid + '" from RCSB...')
+            fixer = PDBFixer(pdbid=options.pdbid)
+        elif options.url != None:
+            if options.verbose: print('Retrieving PDB from URL "' + options.url + '"...')
+            fixer = PDBFixer(url=options.url)
+        else:
+            fixer = PDBFixer(filename=sys.argv[1])
         if options.residues:
+            if options.verbose: print('Finding missing residues...')
             fixer.findMissingResidues()
         else:
             fixer.missingResidues = {}
         if options.nonstandard:
+            if options.verbose: print('Finding nonstandard residues...')
             fixer.findNonstandardResidues()
+            if options.verbose: print('Replacing nonstandard residues...')
             fixer.replaceNonstandardResidues()
+        if options.verbose: print('Finding missing atoms...')
         fixer.findMissingAtoms()
         if options.atoms not in ('all', 'heavy'):
             fixer.missingAtoms = {}
             fixer.missingTerminals = {}
+        if options.verbose: print('Adding missing atoms...')
         fixer.addMissingAtoms()
         if options.heterogens == 'none':
             fixer.removeHeterogens(False)
         elif options.heterogens == 'water':
             fixer.removeHeterogens(True)
         if options.atoms in ('all', 'hydrogen'):
+            if options.verbose: print('Adding missing hydrogens...')
             fixer.addMissingHydrogens(options.ph)
         if options.box is not None:
-            fixer.addSolvent(boxSize=options.box*unit.nanometer, positiveIon=options.positiveIon, 
+            if options.verbose: print('Adding solvent...')
+            fixer.addSolvent(boxSize=options.box*unit.nanometer, positiveIon=options.positiveIon,
                 negativeIon=options.negativeIon, ionicStrength=options.ionic*unit.molar)
         with open(options.output, 'w') as f:
+            if options.verbose: print('Writing output...')
             if fixer.source is not None:
                 f.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
             app.PDBFile.writeFile(fixer.topology, fixer.positions, f, True)
+        if options.verbose: print('Done.')
 
 if __name__ == '__main__':
     main()

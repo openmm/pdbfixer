@@ -2,6 +2,7 @@ from nose.tools import ok_, eq_, raises, assert_list_equal
 import simtk.openmm.app as app
 import pdbfixer
 import tempfile
+import time
 
 def remove_chain_ids_and_verify(pdbid, chain_ids_to_remove, expected_chain_ids_remaining):
     # Create a PDBFixer instance for the given pdbid
@@ -11,6 +12,8 @@ def remove_chain_ids_and_verify(pdbid, chain_ids_to_remove, expected_chain_ids_r
     # Check to make sure asserted chains remain.
     chain_ids_remaining = [c.id for c in fixer.topology.chains()]
     assert_list_equal(chain_ids_remaining, expected_chain_ids_remaining)
+    # Slow down to prevent rapid URL retrievals
+    time.sleep(2)
 
 def test_removechain_ids():
     remove_chain_ids_and_verify('4JSV', [], ['B', 'D', 'A', 'C', 'B', 'A'])
@@ -27,6 +30,8 @@ def remove_chain_indices_and_verify(pdbid, chain_indices_to_remove, expected_cha
     # Check to make sure asserted chains remain.
     chain_ids_remaining = [c.id for c in fixer.topology.chains()]
     assert_list_equal(chain_ids_remaining, expected_chain_ids_remaining)
+    # Slow down to prevent rapid URL retrievals
+    time.sleep(2)
 
 def test_removechain_indices():
     remove_chain_indices_and_verify('4JSV', [], ['B', 'D', 'A', 'C', 'B', 'A'])

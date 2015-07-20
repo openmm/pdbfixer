@@ -2,6 +2,10 @@ package:
   name: pdbfixer-dev
   version: dev
 
+build:
+  entry_points:
+    - pdbfixer = pdbfixer.pdbfixer:main
+
 requirements:
   build:
     - python
@@ -17,6 +21,9 @@ requirements:
 test:
   requires:
     - nose
+
+  imports:
+    - pdbfixer
 
   commands:
     - nosetests pdbfixer --nocapture --verbosity=2 --with-doctest

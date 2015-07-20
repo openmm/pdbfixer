@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/pandegroup/pdbfixer.svg)](https://travis-ci.org/pandegroup/pdbfixer)
+[![Build Status](https://travis-ci.org/pandegroup/pdbfixer.svg?branch=master)](https://travis-ci.org/pandegroup/pdbfixer)
 
 PDBFixer
 ========
