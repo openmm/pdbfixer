@@ -28,7 +28,7 @@ def run_cli(arguments, expected_output=None):
     except CalledProcessError as e:
         message  = "An error return value (%s) was obtained:\n" % str(e.returncode)
         message += "\n"
-        message += e.output
+        message += str(e.output)
         message += "\n"
         raise Exception(message)
 
