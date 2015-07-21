@@ -1,5 +1,7 @@
 language: c
 
+sudo: false
+
 env:
   matrix:
     - CONDA_PY=2.7
