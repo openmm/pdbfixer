@@ -776,7 +776,26 @@ class PDBFixer(object):
         # Create a Topology that 1) adds missing atoms, 2) removes all hydrogens, and 3) removes unknown molecules.
         
         (newTopology, newPositions, newAtoms, existingAtomMap) = self._addAtomsToTopology(True, True)
-        if len(newAtoms) > 0:
+        if len(newAtoms) == 0:
+        
+            # No atoms were added, but new bonds might have been created.
+            
+            newBonds = set(newTopology.bonds())
+            for atom1, atom2 in self.topology.bonds():
+                if atom1 in existingAtomMap and atom2 in existingAtomMap:
+                    a1 = existingAtomMap[atom1]
+                    a2 = existingAtomMap[atom2]
+                    if (a1, a2) in newBonds:
+                        newBonds.remove((a1, a2))
+                    elif (a2, a1) in newBonds:
+                        newBonds.remove((a2, a1))
+            
+            # Add the new bonds to the original Topology.
+            
+            inverseAtomMap = dict((y,x) for (x,y) in existingAtomMap.items())
+            for atom1, atom2 in newTopology.bonds():
+                self.topology.addBond(inverseAtomMap[atom1], inverseAtomMap[atom2])
+        else:
             
             # Create a System for energy minimizing it.
             
