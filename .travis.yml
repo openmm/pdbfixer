@@ -13,7 +13,7 @@ env:
     - secure: "T7qEO3BVXdEP3J4bqE8X882KrdGD4L0cwbAjX/SZMm8e8bG/qmv7XWkxIDp/HakR5GlGr3EBGQDJi5g2CbmFwHjxXMbZ4Y0a3dvoCvfdBNUpBZcjPSil2X976aEkTR1MAL8X7VjuY4lwogqO2WU7Kzm1QaFWjWEl1fV/zxHYN9w="
 
 install:
-  - source devtools/ci/install.sh
+  - source devtools/travis-ci/install.sh
   - export PYTHONUNBUFFERED=true
 
 script:
@@ -26,6 +26,5 @@ after_script:
 
 after_success:
   - echo "after_success"
-  # Upload conda dev package to binstar if all tests pass.
-  - bash devtools/ci/after_sucess.sh
+  - bash devtools/travis-ci/after_success.sh
 
