@@ -73,6 +73,20 @@ proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR'
 rnaResidues = ['A', 'G', 'C', 'U', 'I']
 dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
 
+class Sequence(object):
+    """Sequence holds the sequence of a chain, as specified by SEQRES records."""
+    def __init__(self, chainId, residues):
+        self.chainId = chainId
+        self.residues = residues
+
+class ModifiedResidue(object):
+    """ModifiedResidue holds information about a modified residue, as specified by a MODRES record."""
+    def __init__(self, chainId, number, residueName, standardName):
+        self.chainId = chainId
+        self.number = number
+        self.residueName = residueName
+        self.standardName = standardName
+
 def _overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
 
@@ -214,10 +228,11 @@ class PDBFixer(object):
         if len(atoms)==0:
             raise Exception("Structure contains no atoms.")
             
-        self.structure = structure
-        self.pdb = app.PDBFile(structure)
-        self.topology = self.pdb.topology
-        self.positions = self.pdb.positions
+        pdb = app.PDBFile(structure)
+        self.topology = pdb.topology
+        self.positions = pdb.positions
+        self.sequences = [Sequence(s.chain_id, s.residues) for s in structure.sequences]
+        self.modifiedResidues = [ModifiedResidue(r.chain_id, r.number, r.residue_name, r.standard_name) for r in structure.modified_residues]
         
         # Load the templates.
         
@@ -369,7 +384,7 @@ class PDBFixer(object):
     
     def _computeResidueCenter(self, residue):
         """Compute the centroid of a residue."""
-        return unit.sum([self.pdb.positions[atom.index] for atom in residue.atoms()])/len(list(residue.atoms()))
+        return unit.sum([self.positions[atom.index] for atom in residue.atoms()])/len(list(residue.atoms()))
     
     def _addMissingResiduesToChain(self, chain, residueNames, startPosition, endPosition, loopDirection, orientTo, newAtoms, newPositions, firstIndex):
         """Add a series of residues to a chain."""
@@ -446,9 +461,8 @@ class PDBFixer(object):
             chainIndices = list()
         if chainIds != None:
             # Add all chains that match the selection to the list.
-            chain_id_list = [c.chain_id for c in self.structure.models[0].chains]
-            for (chainNumber, chainId) in enumerate(chain_id_list):
-                if chainId in chainIds:
+            for (chainNumber, chain) in enumerate(allChains):
+                if chain.id in chainIds:
                     chainIndices.append(chainNumber)
             # Ensure only unique entries remain.
             chainIndices = list(set(chainIndices))
@@ -495,9 +509,9 @@ class PDBFixer(object):
         
         chainSequence = {}
         chainOffset = {}
-        for sequence in self.structure.sequences:
+        for sequence in self.sequences:
             for chain in chains:
-                if chain.id != sequence.chain_id:
+                if chain.id != sequence.chainId:
                     continue
                 if chain in chainSequence:
                     continue
@@ -553,7 +567,7 @@ class PDBFixer(object):
         
         # Now add ones based on MODRES records.
         
-        modres = dict(((m.chain_id, str(m.number), m.residue_name), m.standard_name) for m in self.structure.modified_residues)
+        modres = dict(((m.chainId, str(m.number), m.residueName), m.standardName) for m in self.modifiedResidues)
         for chain in self.topology.chains():
             for residue in chain.residues():
                 key = (chain.id, residue.id, residue.name)
@@ -603,7 +617,7 @@ class PDBFixer(object):
             self.positions = modeller.positions
 
 
-    def applyMutations(self, mutations, chain_id, which_model=0):
+    def applyMutations(self, mutations, chain_id):
         """Apply a list of amino acid substitutions to make a mutant protein.
 
         Parameters
@@ -614,8 +628,6 @@ class PDBFixer(object):
             alanine 133 to glycine.  
         chain_id : str
             String based chain ID of the single chain you wish to mutate.
-        which_model : int, default = 0
-            Which model to use in the pdb structure.
 
         Notes
         -----
@@ -644,10 +656,11 @@ class PDBFixer(object):
         index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
         index_to_new_residues = {}
         
-        chain_id_to_chain_number = dict((c.chain_id, k) for k, c in enumerate(self.structure.models[which_model].chains))
+        chain_id_to_chain_number = dict((c.id, k) for k, c in enumerate(self.topology.chains()))
         chain_number = chain_id_to_chain_number[chain_id]
+        chain = list(self.topology.chains())[chain_number]
         
-        resSeq_to_index = dict((r.number, k) for k, r in enumerate(self.structure.models[which_model].chains[chain_number]))
+        resSeq_to_index = dict((int(r.id), k) for k, r in enumerate(chain.residues()))
         
         for mut_str in mutations:
             old_name, resSeq, new_name = mut_str.split("-")
