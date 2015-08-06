@@ -55,8 +55,12 @@ def startPageCallback(parameters, handler):
     global fixer
     if 'type' in parameters:
         if parameters.getfirst('type') == 'local':
-            fixer = PDBFixer(pdbfile=parameters['pdbfile'].value.decode().splitlines())
-            fixer.source = parameters['pdbfile'].filename
+            filename = parameters['pdbfile'].filename
+            if filename.lower().endswith('.pdbx') or filename.lower().endswith('.cif'):
+                fixer = PDBFixer(pdbxfile=StringIO(parameters['pdbfile'].value.decode()))
+            else:
+                fixer = PDBFixer(pdbfile=parameters['pdbfile'].value.decode().splitlines())
+            fixer.source = filename
         else:
             id = parameters.getfirst('pdbid')
             try:
