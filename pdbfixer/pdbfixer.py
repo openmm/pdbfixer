@@ -89,6 +89,26 @@ class ModifiedResidue(object):
         self.residueName = residueName
         self.standardName = standardName
 
+def _guessFileFormat(file, filename):
+    """Guess whether a file is PDB or PDBx/mmCIF based on its filename and contents."""
+    filename = filename.lower()
+    if '.pdbx' in filename or '.cif' in filename:
+        return 'pdbx'
+    if '.pdb' in filename:
+        return 'pdb'
+    for line in file:
+        if line.startswith('data_') or line.startswith('loop_'):
+            file.seek(0)
+            return 'pdbx'
+        if line.startswith('HEADER') or line.startswith('REMARK') or line.startswith('TITLE '):
+            file.seek(0)
+            return 'pdb'
+
+    # It's certainly not a valid PDBx/mmCIF.  Guess that it's a PDB.
+
+    file.seek(0)
+    return 'pdb'
+
 def _overlayPoints(points1, points2):
     """Given two sets of points, determine the translation and rotation that matches them as closely as possible.
 
@@ -213,7 +233,7 @@ class PDBFixer(object):
             # A local file has been specified.
             self.source = filename
             file = open(filename, 'r')
-            if filename.lower().endswith('.pdbx') or filename.lower().endswith('.cif'):
+            if _guessFileFormat(file, filename) == 'pdbx':
                 self._initializeFromPDBx(file.read())
             else:
                 self._initializeFromPDB(file)
@@ -223,14 +243,15 @@ class PDBFixer(object):
             self._initializeFromPDB(pdbfile)
         elif pdbxfile:
             # A file-like object has been specified.
-            self._initializeFromPDBx(pdbxfile.read())
+            self._initializeFromPDBx(pdbxfile)
         elif url:
             # A URL has been specified.
             self.source = url
             file = urlopen(url)
             contents = file.read().decode('utf-8')
             file.close()
-            if '.pdbx' in url.lower() or '.cif' in url.lower():
+            file = StringIO(contents)
+            if _guessFileFormat(file, url) == 'pdbx':
                 self._initializeFromPDBx(contents)
             else:
                 self._initializeFromPDB(StringIO(contents))
@@ -259,16 +280,17 @@ class PDBFixer(object):
         self.sequences = [Sequence(s.chain_id, s.residues) for s in structure.sequences]
         self.modifiedResidues = [ModifiedResidue(r.chain_id, r.number, r.residue_name, r.standard_name) for r in structure.modified_residues]
 
-    def _initializeFromPDBx(self, filecontent):
+    def _initializeFromPDBx(self, file):
         """Initialize this object by reading a PDBx/mmCIF file."""
 
-        pdbx = app.PDBxFile(StringIO(filecontent))
+        pdbx = app.PDBxFile(file)
         self.topology = pdbx.topology
         self.positions = pdbx.positions
 
         # PDBxFile doesn't record the information about sequence or modified residues, so we need to read them separately.
 
-        reader = PdbxReader(StringIO(filecontent))
+        file.seek(0)
+        reader = PdbxReader(file)
         data = []
         reader.read(data)
         block = data[0]
