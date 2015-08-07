@@ -178,9 +178,8 @@ class PDBFixer(object):
         Parameters
         ----------
         filename : str, optional, default=None
-            The name of the file to read.  The format is determined automatically based on the filename extension.  If
-            it ends in either ".pdbx" or ".cif", it is assumed to be a PDBx/mmCIF file.  Otherwise, it is assumed to be
-            a PDB file.
+            The name of the file to read.  The format is determined automatically based on the filename extension, or if
+            that is ambiguous, by looking at the file content.
         pdbfile : file, optional, default=None
             A file-like object from which the PDB file is to be read.
             The file is not closed after reading.
@@ -189,8 +188,8 @@ class PDBFixer(object):
             The file is not closed after reading.
         url : str, optional, default=None
             A URL specifying the internet location from which the file contents should be retrieved.  The format is
-            determined automatically by looking for a filename extension.  If the URL contains either ".pdbx" or ".cif",
-            it is assumed to be a PDBx/mmCIF file.  Otherwise, it is assumed to be a PDB file.
+            determined automatically by looking for a filename extension in the URL, or if that is ambiguous, by looking
+            at the file content.
         pdbid : str, optional, default=None
             A four-letter PDB code specifying the structure to be retrieved from the RCSB.
 
