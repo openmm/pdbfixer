@@ -7,7 +7,7 @@ import time
 import simtk.openmm.app as app
 import simtk.unit as unit
 
-from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues
+from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues, _guessFileFormat
 from . import uiserver
 
 try:
@@ -55,8 +55,13 @@ def startPageCallback(parameters, handler):
     global fixer
     if 'type' in parameters:
         if parameters.getfirst('type') == 'local':
-            fixer = PDBFixer(pdbfile=parameters['pdbfile'].value.decode().splitlines())
-            fixer.source = parameters['pdbfile'].filename
+            filename = parameters['pdbfile'].filename
+            file = StringIO(parameters['pdbfile'].value.decode())
+            if _guessFileFormat(file, filename) == 'pdbx':
+                fixer = PDBFixer(pdbxfile=file)
+            else:
+                fixer = PDBFixer(pdbfile=file)
+            fixer.source = filename
         else:
             id = parameters.getfirst('pdbid')
             try:
@@ -238,7 +243,7 @@ def launchUI():
     # down and then the uiserver exits. Without this daemon/sleep combo, the
     # process cannot be killed with Control-C. Reference stack overflow link:
     # http://stackoverflow.com/a/11816038/1079728
-    
+
     global uiIsRunning
     uiIsRunning = True
     while uiIsRunning:
