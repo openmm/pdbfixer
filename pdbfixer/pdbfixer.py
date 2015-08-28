@@ -739,15 +739,16 @@ class PDBFixer(object):
         """
 
         # First find residues based on our table of standard substitutions.
-
         index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
         index_to_new_residues = {}
 
-        chain_id_to_chain_number = dict((c.id, k) for k, c in enumerate(self.topology.chains()))
-        chain_number = chain_id_to_chain_number[chain_id]
-        chain = list(self.topology.chains())[chain_number]
-
-        resSeq_to_index = dict((int(r.id), k) for k, r in enumerate(chain.residues()))
+        chain_numbers = list()
+        resSeq_to_index = dict()
+        for (chain_number, chain) in enumerate(self.topology.chains()):
+            if chain.id == chain_id:
+                chain_numbers.append(chain_id)
+                for (residue_number, residue) in enumerate(chain.residues()):
+                    resSeq_to_index[int(residue.id)] = residue_number
 
         for mut_str in mutations:
             old_name, resSeq, new_name = mut_str.split("-")
