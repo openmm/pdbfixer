@@ -775,9 +775,8 @@ class PDBFixer(object):
             deleteAtoms = [] # list of atoms to delete
 
             # Find atoms that should be deleted.
-            for residue, replaceWith in residue_map.iteritems():
-                if residue.chain.index != chain_number:
-                    continue  # Only modify specified chain
+            for residue in residue_map.keys():
+                replaceWith = residue_map[residue]
                 residue.name = replaceWith
                 template = self.templates[replaceWith]
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
