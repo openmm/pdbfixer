@@ -47,8 +47,6 @@ def test_mutate_2():
     desired_atom_names = set(["C", "N", "CA", "CB", "CG", "CD1", "CD2", "O", "H", "HA", "HB2", "HB3", "HD11", "HD12", "HD13", "HD21", "HD22", "HD23", "HG"])
     assert atom_names == desired_atom_names, "Atom Names did not match for LEU 57"
 
-
-
 @raises(ValueError)
 def test_mutate_3_fails():
     fixer = pdbfixer.PDBFixer(pdbid='1VII')
@@ -64,4 +62,8 @@ def test_mutate_4_fails():
 def test_mutate_5_fails():
     fixer = pdbfixer.PDBFixer(pdbid='1VII')
     fixer.applyMutations(["ALA-1000-GLY", "SER-56-ALA"], "A")
+
+def test_mutate_multiple_copies_of_chain_A():
+    fixer = pdbfixer.PDBFixer(pdbid='1OL5')
+    fixer.applyMutations(['TPO-287-THR','TPO-288-THR'], "A")
 

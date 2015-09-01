@@ -739,45 +739,46 @@ class PDBFixer(object):
         """
 
         # First find residues based on our table of standard substitutions.
-
         index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
         index_to_new_residues = {}
 
-        chain_id_to_chain_number = dict((c.id, k) for k, c in enumerate(self.topology.chains()))
-        chain_number = chain_id_to_chain_number[chain_id]
-        chain = list(self.topology.chains())[chain_number]
+        # Retrieve all residues that match the specified chain_id.
+        # NOTE: Multiple chains may have the same chainid, but must have unique resSeq entries.
+        resSeq_to_residue = dict() # resSeq_to_residue[resid] is the residue in the requested chain corresponding to residue identifier 'resid'
+        for chain in self.topology.chains():
+            if chain.id == chain_id:
+                for residue in chain.residues():
+                    resSeq_to_residue[int(residue.id)] = residue
 
-        resSeq_to_index = dict((int(r.id), k) for k, r in enumerate(chain.residues()))
-
+        # Make a map of residues to mutate based on requested mutation list.
+        residue_map = dict() # residue_map[residue] is the name of the new residue to mutate to, if a mutation is desired
         for mut_str in mutations:
             old_name, resSeq, new_name = mut_str.split("-")
             resSeq = int(resSeq)
-            index = resSeq_to_index[resSeq]
 
-            if index not in index_to_old_name:
-                raise(KeyError("Cannot find index %d in system!" % index))
+            if resSeq not in resSeq_to_residue:
+                raise(KeyError("Cannot find chain %s residue %d in system!" % (chain_id, resSeq)))
 
-            if index_to_old_name[index] != old_name:
-                raise(ValueError("You asked to mutate %s %d, but that residue is actually %s!" % (old_name, index, index_to_old_name[index])))
+            residue = resSeq_to_residue[resSeq] # retrieve the requested residue
+
+            if residue.name != old_name:
+                raise(ValueError("You asked to mutate chain %s residue %d name %s, but that residue is actually %s!" % (chain_id, resSeq, old_name, residue.name)))
 
             try:
                 template = self.templates[new_name]
             except KeyError:
                 raise(KeyError("Cannot find residue %s in template library!" % new_name))
 
-            index_to_new_residues[index] = new_name
+            # Store mutation
+            residue_map[residue] = new_name
 
-
-        residue_map = [(r, index_to_new_residues[r.index]) for r in self.topology.residues() if r.index in index_to_new_residues]
-
-        if len(residue_map) > 0:
-            deleteAtoms = []
+        # If there are mutations to be made, make them.
+        if len(residue_map) > 0:            
+            deleteAtoms = [] # list of atoms to delete
 
             # Find atoms that should be deleted.
-
-            for residue, replaceWith in residue_map:
-                if residue.chain.index != chain_number:
-                    continue  # Only modify specified chain
+            for residue in residue_map.keys():
+                replaceWith = residue_map[residue]
                 residue.name = replaceWith
                 template = self.templates[replaceWith]
                 standardAtoms = set(atom.name for atom in template.topology.atoms())
@@ -785,7 +786,7 @@ class PDBFixer(object):
                     if atom.element in (None, hydrogen) or atom.name not in standardAtoms:
                         deleteAtoms.append(atom)
 
-            # Delete them.
+            # Delete atoms queued to be deleted.
             modeller = app.Modeller(self.topology, self.positions)
             modeller.delete(deleteAtoms)
             self.topology = modeller.topology
