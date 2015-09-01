@@ -742,13 +742,15 @@ class PDBFixer(object):
         index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
         index_to_new_residues = {}
 
+        # Retrieve all residues that match the specified chain_id.
         # NOTE: Multiple chains may have the same chainid, but must have unique resSeq entries.
         resSeq_to_residue = dict() # resSeq_to_residue[resid] is the residue in the requested chain corresponding to residue identifier 'resid'
-        for (chain_number, chain) in enumerate(self.topology.chains()):
+        for chain in self.topology.chains():
             if chain.id == chain_id:
-                for (residue_number, residue) in enumerate(chain.residues()):
+                for residue in chain.residues():
                     resSeq_to_residue[int(residue.id)] = residue
 
+        # Make a map of residues to mutate based on requested mutation list.
         residue_map = dict() # residue_map[residue] is the name of the new residue to mutate to, if a mutation is desired
         for mut_str in mutations:
             old_name, resSeq, new_name = mut_str.split("-")
