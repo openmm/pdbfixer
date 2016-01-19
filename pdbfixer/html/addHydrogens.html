@@ -23,6 +23,13 @@ function validateForm() {
     }
     return true
 }
+function applyPaddingToWaterBox(padding) {
+    padding = parseFloat(padding);
+    if(!padding || padding<0) padding = 0;
+    for (var i = pbcxyz.length; i--;) {
+        pbcxyz[i].value = Math.ceil((padding+molxyz[i])*1000) / 1000;
+    }
+}   
 </script>
 <form id="mainform" method="post" action="/">
 <h1>Delete Heterogens</h1>
@@ -43,7 +50,14 @@ Add a water box surrounding the model?
 <input type="checkbox" id="addWaterCheckbox" name="addwater" onchange="enableControls(document.getElementById('waterInputs'), document.getElementById('addWaterCheckbox').checked)"> Add water
 <div id="waterInputs" style="margin-left:50px">
     <table style="text-align:right">
-        <tr><td>Box dimensions (in nm):</td><td><input type="text" id="boxxfield" name="boxx" size="8"></td><td><input type="text" id="boxyfield" name="boxy" size="8"></td><td><input type="text" id="boxzfield" name="boxz" size="8"></td></tr>
+        <tr>
+        <td>Box dimensions (in nm):</td>
+        <td><input type="text" id="boxxfield" name="boxx" size="8"></td>
+        <td><input type="text" id="boxyfield" name="boxy" size="8"></td>
+        <td><input type="text" id="boxzfield" name="boxz" size="8"></td>
+        <td>Padding:</td>
+        <td><input type="text" id="xyzpadding" name="xyzpad" size="8" oninput="applyPaddingToWaterBox(this.value)"></td>
+        </tr>
         %s
     </table>
     <p>
@@ -59,8 +73,10 @@ Add a water box surrounding the model?
 <input type="button" value="Continue" onclick="if (validateForm()) submitWithSpinner()"/>
 </form>
 <script>
-setCurrentStep(6)
-enableControls(document.getElementById('waterInputs'), false)
+setCurrentStep(6);
+enableControls(document.getElementById('waterInputs'), false);
+var molxyz = [].slice.call(document.getElementById('waterInputs').getElementsByTagName('tr')[1].getElementsByTagName('td')).splice(1,3).map(function(td){ return parseFloat(td.textContent)});
+var pbcxyz = [document.getElementById('boxxfield'), document.getElementById('boxyfield'), document.getElementById('boxzfield')];
 </script>
 </body>
 <html>
