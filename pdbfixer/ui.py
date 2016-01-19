@@ -219,7 +219,7 @@ def displayAddHydrogensPage():
     if fixer.topology.getUnitCellDimensions() is not None:
         dimensions = "<tr><td>Crystallographic unit cell:</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>" % fixer.topology.getUnitCellDimensions().value_in_unit(unit.nanometer)
     sizeRange = tuple(max((pos[i] for pos in fixer.positions))-min((pos[i] for pos in fixer.positions)) for i in range(3))
-    dimensions += "<tr><td>Box containing all atoms:</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>" % tuple(x.value_in_unit(unit.nanometer) for x in sizeRange)
+    dimensions += "<tr id='boxContainingAllAtoms'><td>Box containing all atoms:</td><td>%.3f</td><td>%.3f</td><td>%.3f</td></tr>" % tuple(x.value_in_unit(unit.nanometer) for x in sizeRange)
     uiserver.setContent(header+loadHtmlFile("addHydrogens.html") % dimensions)
 
 def displaySaveFilePage():
