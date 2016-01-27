@@ -8,14 +8,21 @@ function validateForm() {
         }
     }
     if (document.getElementById("addWaterCheckbox").checked) {
+        var custombox = document.getElementById("customBoxRadio").checked
         var xsize = document.getElementById("boxxfield").value
         var ysize = document.getElementById("boxyfield").value
         var zsize = document.getElementById("boxzfield").value
-        var strength = document.getElementById("ionicstrengthfield").value
-        if (!(xsize > 0 && ysize > 0 && zsize > 0)) {
+        if (custombox && !(xsize > 0 && ysize > 0 && zsize > 0)) {
             alert("Box dimensions must be positive numbers.")
             return false
         }
+        var geombox = document.getElementById("geometricBoxRadio").checked
+        var padsize = document.getElementById("geomPadding").value
+        if (geombox && !(padsize > 0)) {
+            alert("Box padding must be a positive number.")
+            return false
+        }
+        var strength = document.getElementById("ionicstrengthfield").value
         if (!(strength >= 0)) {
             alert("Ionic strength must be a nonnegative number.")
             return false
@@ -59,15 +66,28 @@ Add a water box surrounding the model?
 <div id="waterInputs" style="margin-left:50px">
     <table style="text-align:right">
         <tr>
-        <td>Type box dimensions (in nm):</td>
+        <td style="text-align:left"><input id="customBoxRadio" type="radio" name="boxType" value="custom" checked>Custom box dimensions (in nm):</td>
+        <div id="customBoxDimensions">
         <td><input type="text" id="boxxfield" name="boxx" size="8"></td>
         <td><input type="text" id="boxyfield" name="boxy" size="8"></td>
         <td><input type="text" id="boxzfield" name="boxz" size="8"></td>
+        </div>
         </tr>
+
         <tr>
-        <td>... or set them from padding:</td>
-        <td><input type="text" id="xyzpadding" name="xyzpad" size="8" oninput="applyPaddingToWaterBox(this.value)"></td>
-        <td colspan="2"><input type="checkbox" id="cubicPaddingCheckBox" name="cubicPaddingCheckBox" checked>Force cubic geometry <span title="All sides are equal to the biggest dimension plus padding" style="border-bottom: 1px dotted black; cursor: help">?</span></td>
+        <td style="text-align:left"><input id="geometricBoxRadio" type="radio" name="boxType" value="geometry">Geometry with padding (in nm):</td>
+        <div id="geometricBoxDimensions">
+        <td><input type="text" id="geomPadding" name="geomPadding" size="8">
+        </td>
+        <td colspan="2">
+            <select id="geometryDropdown" name="geometryDropdown">
+                <option value="cube" selected="selected">Cube</option>
+                <option value="truncatedOctahedron">Truncated octahedron</option>
+                <option value="rhombicDodecahedron">Rhombic dodecahedron</option>
+            </select>
+            <span title="The specified padding will be applied on the largest molecular axis, maintaining selected geometry" style="border-bottom: 1px dotted black; cursor: help">?</span>
+        </div>
+        </td>
         </tr>
         %s
     </table>
@@ -87,7 +107,11 @@ Add a water box surrounding the model?
 setCurrentStep(6);
 enableControls(document.getElementById('waterInputs'), false);
 var molxyz = [].slice.call(document.getElementById('boxContainingAllAtoms').getElementsByTagName('td')).splice(1,3).map(function(td){ return parseFloat(td.textContent)});
-var pbcxyz = [document.getElementById('boxxfield'), document.getElementById('boxyfield'), document.getElementById('boxzfield')];
+var hiddenInput = document.createElement("input");
+hiddenInput.setAttribute("type", "hidden");
+hiddenInput.setAttribute("name", "maxMolecularAxis");
+hiddenInput.setAttribute("value", Math.max.apply(Math, molxyz));
+document.getElementById("mainform").appendChild(hiddenInput);
 </script>
 </body>
 <html>

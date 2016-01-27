@@ -1021,15 +1021,17 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
 
-    def addSolvent(self, boxSize=None, padding=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
+    def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
         """Add a solvent box surrounding the structure.
 
         Parameters
         ----------
         boxSize : simtk.openmm.Vec3, optional, default=None
-            The size of the box to fill with water.  If specified, padding must not be specified.
+            The size of the box to fill with water.  If specified, padding and boxVectors must not be specified.
         padding : simtk.unit.Quantity compatible with nanometers, optional, default=None
-            Padding around macromolecule for filling box with water.  If specified, boxSize must not be specified.
+            Padding around macromolecule for filling box with water.  If specified, boxSize and boxVectors must not be specified.
+        boxVectors : 3-tuple of simtk.openmm.Vec3, optional, default=None
+            Three vectors specifying the geometry of the box. If specified, padding and boxSize must not be specified.
         positiveIon : str, optional, default='Na+'
             The type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'.
         negativeIon : str, optional, default='Cl-'
@@ -1053,7 +1055,7 @@ class PDBFixer(object):
 
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
-        modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, boxVectors=boxVectors, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
         chains = list(modeller.topology.chains())
         if len(chains) == 1:
             chains[0].id = 'A'

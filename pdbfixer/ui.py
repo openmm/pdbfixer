@@ -3,9 +3,11 @@ from __future__ import absolute_import
 import webbrowser
 import os.path
 import time
+from math import sqrt
 
 import simtk.openmm.app as app
 import simtk.unit as unit
+from simtk.openmm.vec3 import Vec3
 
 from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues, _guessFileFormat
 from . import uiserver
@@ -111,11 +113,25 @@ def addHydrogensPageCallback(parameters, handler):
         pH = float(parameters.getfirst('ph'))
         fixer.addMissingHydrogens(pH)
     if 'addwater' in parameters:
-        boxSize = (float(parameters.getfirst('boxx')), float(parameters.getfirst('boxy')), float(parameters.getfirst('boxz')))*unit.nanometer
+        padding, boxSize, boxVectors = None, None, None
+        if parameters.getfirst('boxType') == 'geometry':
+            geompadding = float(parameters.getfirst('geomPadding')) * unit.nanometer
+            geometry = parameters.getfirst('geometryDropdown')
+            base_size = float(parameters.getfirst('maxMolecularAxis')) * unit.nanometer
+            if geometry == 'cube':
+                padding = geompadding
+            elif geometry == 'truncatedOctahedron':
+                vectors = Vec3(1,0,0), Vec3(1/3,2*sqrt(2)/3,0), Vec3(-1/3,1/3,sqrt(6)/3)
+                boxVectors = [(base_size+geompadding)*v for v in vectors]
+            elif geometry == 'rhombicDodecahedron':
+                vectors = Vec3(1,0,0), Vec3(0,1,0), Vec3(0.5,0.5,sqrt(2)/2)
+                boxVectors = [(base_size+geompadding)*v for v in vectors]
+        else:
+            boxSize = (float(parameters.getfirst('boxx')), float(parameters.getfirst('boxy')), float(parameters.getfirst('boxz')))*unit.nanometer
         ionicStrength = float(parameters.getfirst('ionicstrength'))*unit.molar
         positiveIon = parameters.getfirst('positiveion')+'+'
         negativeIon = parameters.getfirst('negativeion')+'-'
-        fixer.addSolvent(boxSize, None, positiveIon, negativeIon, ionicStrength)
+        fixer.addSolvent(boxSize, padding, boxVectors, positiveIon, negativeIon, ionicStrength)
     displaySaveFilePage()
 
 def saveFilePageCallback(parameters, handler):
@@ -123,7 +139,10 @@ def saveFilePageCallback(parameters, handler):
         output = StringIO()
         if fixer.source is not None:
             output.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
-        app.PDBFile.writeFile(fixer.topology, fixer.positions, output, True)
+        try:
+            app.PDBFile.writeFile(fixer.topology, fixer.positions, output, True)
+        except AssertionError:
+            print
         handler.sendDownload(output.getvalue(), 'output.pdb')
     else:
         displayStartPage()
