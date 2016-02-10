@@ -8,14 +8,21 @@ function validateForm() {
         }
     }
     if (document.getElementById("addWaterCheckbox").checked) {
+        var custombox = document.getElementById("customBoxRadio").checked
         var xsize = document.getElementById("boxxfield").value
         var ysize = document.getElementById("boxyfield").value
         var zsize = document.getElementById("boxzfield").value
-        var strength = document.getElementById("ionicstrengthfield").value
-        if (!(xsize > 0 && ysize > 0 && zsize > 0)) {
+        if (custombox && !(xsize > 0 && ysize > 0 && zsize > 0)) {
             alert("Box dimensions must be positive numbers.")
             return false
         }
+        var geombox = document.getElementById("geometricBoxRadio").checked
+        var padsize = document.getElementById("geomPadding").value
+        if (geombox && !(padsize > 0)) {
+            alert("Box padding must be a positive number.")
+            return false
+        }
+        var strength = document.getElementById("ionicstrengthfield").value
         if (!(strength >= 0)) {
             alert("Ionic strength must be a nonnegative number.")
             return false
@@ -23,7 +30,61 @@ function validateForm() {
     }
     return true
 }
+function applyPaddingToWaterBox(padding) {
+    padding = parseFloat(padding);
+    if(!padding || padding<0) padding = 0;
+    if (document.getElementById('cubicPaddingCheckBox').checked){
+        var maxAxis = Math.max.apply(Math, molxyz);
+        for (var i = pbcxyz.length; i--;) {
+            pbcxyz[i].value = Math.ceil((padding+maxAxis)*1000) / 1000;
+        }
+    }
+    else {
+        for (var i = pbcxyz.length; i--;) {
+            pbcxyz[i].value = Math.ceil((padding+molxyz[i])*1000) / 1000;
+        }
+    }
+}    
 </script>
+<style>
+a.tooltip {
+    display: inline;
+    position: relative;
+    color: #000;
+    border-bottom: 1px dotted #000;
+    text-decoration: none;
+}
+a.tooltip:hover:after {
+    content: attr(rel);
+    text-align: center;
+    font-size: 80%%;
+    background: #000;
+    color: #fff;
+    width: 250px;
+    bottom: 30px;
+    left: -125px;
+    padding: 10px 15px;
+    position: absolute;
+    z-index: 100;
+    /* Effects */
+    background: rgba(0,0,0,0.75);
+    border-radius: 5px;
+    box-shadow: 0 0 25px #333;
+}
+/* Down arrow */
+a.tooltip:hover:before {
+    border: solid;
+    border-color: #333 transparent;
+    border-width: 10px 10px 0 10px;
+    bottom: 20px;
+    left: -6px;
+    content: "";
+    position: absolute;
+    z-index: 99;
+    /* Effects */
+    border-color: rgba(0,0,0,0.75) transparent;
+}
+</style>
 <form id="mainform" method="post" action="/">
 <h1>Delete Heterogens</h1>
 A heterogen is any residue other than a standard amino acid or nucleotide.  Do you want to delete heterogens?
@@ -43,7 +104,30 @@ Add a water box surrounding the model?
 <input type="checkbox" id="addWaterCheckbox" name="addwater" onchange="enableControls(document.getElementById('waterInputs'), document.getElementById('addWaterCheckbox').checked)"> Add water
 <div id="waterInputs" style="margin-left:50px">
     <table style="text-align:right">
-        <tr><td>Box dimensions (in nm):</td><td><input type="text" id="boxxfield" name="boxx" size="8"></td><td><input type="text" id="boxyfield" name="boxy" size="8"></td><td><input type="text" id="boxzfield" name="boxz" size="8"></td></tr>
+        <tr>
+        <td style="text-align:left"><input id="customBoxRadio" type="radio" name="boxType" value="custom" checked>Custom box dimensions (in nm):</td>
+        <div id="customBoxDimensions">
+        <td><input type="text" id="boxxfield" name="boxx" size="8"></td>
+        <td><input type="text" id="boxyfield" name="boxy" size="8"></td>
+        <td><input type="text" id="boxzfield" name="boxz" size="8"></td>
+        </div>
+        </tr>
+
+        <tr>
+        <td style="text-align:left"><input id="geometricBoxRadio" type="radio" name="boxType" value="geometry">Geometry with padding (in nm):</td>
+        <div id="geometricBoxDimensions">
+        <td><input type="text" id="geomPadding" name="geomPadding" size="8">
+        </td>
+        <td colspan="2">
+            <select id="geometryDropdown" name="geometryDropdown">
+                <option value="cube" selected="selected">Cube</option>
+                <option value="truncatedOctahedron">Truncated octahedron</option>
+                <option value="rhombicDodecahedron">Rhombic dodecahedron</option>
+            </select>
+            <a href="#" rel="The specified padding will be applied on the largest molecular axis, while maintaining selected geometry." class="tooltip">?</a>
+        </div>
+        </td>
+        </tr>
         %s
     </table>
     <p>
@@ -59,8 +143,14 @@ Add a water box surrounding the model?
 <input type="button" value="Continue" onclick="if (validateForm()) submitWithSpinner()"/>
 </form>
 <script>
-setCurrentStep(6)
-enableControls(document.getElementById('waterInputs'), false)
+setCurrentStep(6);
+enableControls(document.getElementById('waterInputs'), false);
+var molxyz = [].slice.call(document.getElementById('boxContainingAllAtoms').getElementsByTagName('td')).splice(1,3).map(function(td){ return parseFloat(td.textContent)});
+var hiddenInput = document.createElement("input");
+hiddenInput.setAttribute("type", "hidden");
+hiddenInput.setAttribute("name", "maxMolecularAxis");
+hiddenInput.setAttribute("value", Math.max.apply(Math, molxyz));
+document.getElementById("mainform").appendChild(hiddenInput);
 </script>
 </body>
 <html>
