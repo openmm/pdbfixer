@@ -1,30 +1,39 @@
 language: c
-
 sudo: false
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+
+install:
+  - bash -x devtools/travis-ci/install.sh
+  - export PYTHONUNBUFFERED=true
+  - export PATH=$HOME/miniconda/bin:$PATH
+
+script:
+  # Add conda channel
+  - conda config --add channels $ORGNAME
+  # Build the recipe
+  - conda build devtools/conda-recipe
+  # Test the local installation
+  - source activate _test
+  - conda install --yes --quiet nose nose-timer
+  - cd devtools && nosetests $PACKAGENAME --nocapture --verbosity=2 --with-doctest --with-timer -a "\!slow" && cd ..
+  # Run pyflakes
+  - pyflakes pdbfixer/*.py
 
 env:
   matrix:
-    - CONDA_PY=2.7
-    - CONDA_PY=3.3
-    - CONDA_PY=3.4
+    - python=2.7  CONDA_PY=27
+    - python=3.4  CONDA_PY=34
+    - python=3.5  CONDA_PY=35
 
   global:
-    # BINSTAR_TOKEN
+    - ORGNAME="omnia" # the name of the organization
+    - PACKAGENAME="pdbfixer" # the name of your package
+    # encrypted BINSTAR_TOKEN for push of dev package to binstar
     - secure: "T7qEO3BVXdEP3J4bqE8X882KrdGD4L0cwbAjX/SZMm8e8bG/qmv7XWkxIDp/HakR5GlGr3EBGQDJi5g2CbmFwHjxXMbZ4Y0a3dvoCvfdBNUpBZcjPSil2X976aEkTR1MAL8X7VjuY4lwogqO2WU7Kzm1QaFWjWEl1fV/zxHYN9w="
-
-install:
-  - source devtools/travis-ci/install.sh
-  - export PYTHONUNBUFFERED=true
-
-script:
-  # Build the conda package, running tests as part of the build.
-  - conda build devtools/conda-recipe
-
-after_script:
-  # Run pyflakes.
-  - pyflakes pdbfixer/*.py
 
 after_success:
   - echo "after_success"
-  - bash devtools/travis-ci/after_success.sh
-
+  - if [ "$TRAVIS_SECURE_ENV_VARS" == true ]; then source devtools/travis-ci/after_success.sh; fi
