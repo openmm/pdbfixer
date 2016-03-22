@@ -12,7 +12,7 @@ import tempfile
 from threading import Timer
 
 #from a solution on stackoverflow
-class Watchdog:
+class Watchdog(BaseException):
     def __init__(self, timeout, userHandler=None):  # timeout in seconds
         self.timeout = timeout
         self.handler = userHandler if userHandler is not None else self.defaultHandler

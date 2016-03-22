@@ -1104,7 +1104,7 @@ class PDBFixer(object):
                 element = atom.element
                 typeName = 'extra_'+element.symbol
                 if element not in atomTypes:
-                    atomTypes[element] = (typeName, 0.0, element)
+                    atomTypes[element] = app.ForceField._AtomType(typeName, '', 0.0, element)
                     forcefield._atomTypes[typeName] = atomTypes[element]
                     if water:
                         # Select a reasonable vdW radius for this atom type.
