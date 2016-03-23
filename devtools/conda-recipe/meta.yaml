@@ -21,12 +21,10 @@ requirements:
 test:
   requires:
     - nose
+    - pyflakes
 
   imports:
     - pdbfixer
-
-  commands:
-    - nosetests pdbfixer --nocapture --verbosity=2 --with-doctest
 
 about:
   home: http://github.com/pandegroup/pdbfixer
