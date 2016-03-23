@@ -21,7 +21,6 @@ requirements:
 test:
   requires:
     - nose
-    - pyflakes
 
   imports:
     - pdbfixer

@@ -18,8 +18,6 @@ script:
   # Test the local installation
   - source activate _test
   - conda install --yes --quiet nose nose-timer
-  # Run pyflakes
-  - pyflakes pdbfixer/*.py
   # Run tests
   - cd devtools && nosetests $PACKAGENAME --nocapture --verbosity=2 --with-doctest --with-timer -a "\!slow" && cd ..
 
