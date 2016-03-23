@@ -18,10 +18,10 @@ script:
   # Test the local installation
   - source activate _test
   - conda install --yes --quiet nose nose-timer
-  - cd devtools && nosetests $PACKAGENAME --nocapture --verbosity=2 --with-doctest --with-timer -a "\!slow" && cd ..
   # Run pyflakes
-  - pip install https://github.com/dcramer/pyflakes/tarball/master
   - pyflakes pdbfixer/*.py
+  # Run tests
+  - cd devtools && nosetests $PACKAGENAME --nocapture --verbosity=2 --with-doctest --with-timer -a "\!slow" && cd ..
 
 env:
   matrix:
