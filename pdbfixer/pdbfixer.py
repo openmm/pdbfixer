@@ -390,7 +390,6 @@ class PDBFixer(object):
                 # Create the new residue and add existing heavy atoms.
 
                 newResidue = newTopology.addResidue(residue.name, newChain, residue.id)
-                addResiduesAfter = (residue == chainResidues[-1] and (chain.index, indexInChain+1) in self.missingResidues)
                 for atom in residue.atoms():
                     if not heavyAtomsOnly or (atom.element is not None and atom.element != hydrogen):
                         if atom.name == 'OXT' and (chain.index, indexInChain+1) in self.missingResidues:
@@ -737,11 +736,6 @@ class PDBFixer(object):
         >>> fixer.addMissingHydrogens(7.0)
 
         """
-
-        # First find residues based on our table of standard substitutions.
-        index_to_old_name = dict((r.index, r.name) for r in self.topology.residues())
-        index_to_new_residues = {}
-
         # Retrieve all residues that match the specified chain_id.
         # NOTE: Multiple chains may have the same chainid, but must have unique resSeq entries.
         resSeq_to_residue = dict() # resSeq_to_residue[resid] is the residue in the requested chain corresponding to residue identifier 'resid'
@@ -900,7 +894,6 @@ class PDBFixer(object):
 
             # Create a System for energy minimizing it.
 
-            res = list(newTopology.residues())
             forcefield = self._createForceField(newTopology, False)
             system = forcefield.createSystem(newTopology)
 
