@@ -13,10 +13,8 @@ from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues, _gues
 from . import uiserver
 
 try:
-    from urllib.request import urlopen
     from io import StringIO
 except:
-    from urllib2 import urlopen
     from cStringIO import StringIO
 
 def loadHtmlFile(name):
