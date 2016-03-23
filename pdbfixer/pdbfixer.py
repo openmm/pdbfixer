@@ -46,6 +46,8 @@ import os
 import os.path
 import math
 
+from pkg_resources import resource_filename
+
 try:
     from urllib.request import urlopen
     from io import StringIO
