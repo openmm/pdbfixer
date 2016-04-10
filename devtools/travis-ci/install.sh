@@ -3,7 +3,7 @@ pushd .
 cd $HOME
 
 # Install Miniconda
-MINICONDA=Miniconda-latest-Linux-x86_64.sh
+MINICONDA=Miniconda2-latest-Linux-x86_64.sh
 MINICONDA_HOME=$HOME/miniconda
 MINICONDA_MD5=$(curl -s http://repo.continuum.io/miniconda/ | grep -A3 $MINICONDA | sed -n '4p' | sed -n 's/ *<td>\(.*\)<\/td> */\1/p')
 wget -q http://repo.continuum.io/miniconda/$MINICONDA

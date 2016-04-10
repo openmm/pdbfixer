@@ -31,7 +31,7 @@ env:
     - ORGNAME="omnia" # the name of the organization
     - PACKAGENAME="pdbfixer" # the name of your package
     # encrypted BINSTAR_TOKEN for push of dev package to binstar
-    - secure: "T7qEO3BVXdEP3J4bqE8X882KrdGD4L0cwbAjX/SZMm8e8bG/qmv7XWkxIDp/HakR5GlGr3EBGQDJi5g2CbmFwHjxXMbZ4Y0a3dvoCvfdBNUpBZcjPSil2X976aEkTR1MAL8X7VjuY4lwogqO2WU7Kzm1QaFWjWEl1fV/zxHYN9w="
+    - secure: "hhzbVwxc6bUUkvcU4SauCUSGUIwDHV5Mq7lNZkzhQOeOQOXBCoew3zl44qwLUUYbO+Hla/+U2UqxvXZ5vx4IJzvHcMJhXB6ZiNwc5hwZtvduWzmDJZ+ErASDsdvRCGXxDz90TkOxoL/Wy6lMr6OIMMosrjY6NJGotMiCB9IUDqY="
 
 after_success:
   - echo "after_success"
