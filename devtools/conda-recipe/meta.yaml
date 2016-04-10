@@ -1,6 +1,6 @@
 package:
   name: pdbfixer-dev
-  version: dev
+  version: 0.0.0
 
 build:
   entry_points:
