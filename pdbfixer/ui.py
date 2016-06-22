@@ -3,6 +3,7 @@ from __future__ import absolute_import
 import webbrowser
 import os.path
 import time
+import sys
 from math import sqrt
 
 import simtk.openmm.app as app
@@ -12,9 +13,9 @@ from simtk.openmm.vec3 import Vec3
 from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues, _guessFileFormat
 from . import uiserver
 
-try:
+if sys.version_info >= (3,0):
     from io import StringIO
-except:
+else:
     from cStringIO import StringIO
 
 def loadHtmlFile(name):
