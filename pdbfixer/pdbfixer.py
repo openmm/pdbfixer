@@ -48,10 +48,10 @@ import math
 
 from pkg_resources import resource_filename
 
-try:
+if sys.version_info >= (3,0):
     from urllib.request import urlopen
     from io import StringIO
-except:
+else:
     from urllib2 import urlopen
     from cStringIO import StringIO
 
