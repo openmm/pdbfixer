@@ -464,6 +464,12 @@ class PDBFixer(object):
         newTopology.createStandardBonds()
         newTopology.createDisulfideBonds(newPositions)
 
+        # Add the bonds between atoms in heterogens.
+
+        for a1,a2 in self.topology.bonds():
+            if a1 in existingAtomMap and a2 in existingAtomMap and (a1.residue.name not in app.Topology._standardBonds or a2.residue.name not in app.Topology._standardBonds):
+                newTopology.addBond(existingAtomMap[a1], existingAtomMap[a2])
+
         # Return the results.
 
         return (newTopology, newPositions, newAtoms, existingAtomMap)
