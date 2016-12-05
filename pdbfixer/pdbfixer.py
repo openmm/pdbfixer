@@ -1112,7 +1112,7 @@ class PDBFixer(object):
                             sigma = radii[element.symbol]
                         else:
                             sigma = 0.5
-                        nonbonded.typeMap[typeName] = (0.0, sigma, 0.0)
+                        nonbonded.registerAtom({'type':typeName, 'charge':'0', 'sigma':str(sigma), 'epsilon':'0'})
                 indexInResidue[atom.index] = len(template.atoms)
                 template.atoms.append(app.ForceField._TemplateAtomData(atom.name, typeName, element))
             for atom in residue.atoms():
