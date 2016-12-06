@@ -13,7 +13,7 @@ install:
 script:
   # Add conda channel
   - conda config --add channels $ORGNAME
-  - conda config --add channels $ORGNAME/labels/dev
+  - conda config --add channels https://conda.anaconda.org/omnia/label/dev
   # Build the recipe
   - conda build devtools/conda-recipe
   # Test the local installation
