@@ -34,7 +34,7 @@ from setuptools import setup, find_packages
 DOCLINES = __doc__.split("\n")
 
 ########################
-__version__ = '1.3'
+__version__ = '1.4'
 VERSION = __version__
 ISRELEASED = False
 ########################
@@ -74,6 +74,6 @@ setup(
     packages=find_packages(),
     package_data={'pdbfixer': find_package_data()},
     zip_safe=False,
-    install_requires=['numpy', 'openmm >= 7.0'],
+    install_requires=['numpy', 'openmm >= 7.1'],
     entry_points={'console_scripts': ['pdbfixer = pdbfixer.pdbfixer:main']})
 
