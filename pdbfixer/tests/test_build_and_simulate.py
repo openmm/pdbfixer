@@ -137,12 +137,12 @@ def test_build_and_simulate():
             fixer.findNonstandardResidues()
             stage = "Replacing nonstandard residues..."
             fixer.replaceNonstandardResidues()
+            stage = "Removing heterogens..."
+            fixer.removeHeterogens(False)
             stage = "Finding missing atoms..."
             fixer.findMissingAtoms()
             stage = "Adding missing atoms..."
             fixer.addMissingAtoms()
-            stage = "Removing heterogens..."
-            fixer.removeHeterogens(False)
             stage = "Adding missing hydrogens..."
             fixer.addMissingHydrogens(pH)
             stage = "Writing PDB file..."
