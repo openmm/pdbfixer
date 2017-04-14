@@ -79,6 +79,8 @@ def startPageCallback(parameters, handler):
         displayDeleteChainsPage()
 
 def deleteChainsPageCallback(parameters, handler):
+    global heterogens
+    heterogens = parameters.getfirst('heterogens')
     numChains = len(list(fixer.topology.chains()))
     deleteIndices = [i for i in range(numChains) if 'include'+str(i) not in parameters]
     fixer.removeChains(deleteIndices)
@@ -103,11 +105,6 @@ def missingAtomsPageCallback(parameters, handler):
     displayAddHydrogensPage()
 
 def addHydrogensPageCallback(parameters, handler):
-    heterogens = parameters.getfirst('heterogens')
-    if heterogens == 'none':
-        fixer.removeHeterogens(False)
-    elif heterogens == 'water':
-        fixer.removeHeterogens(True)
     if 'addhydrogens' in parameters:
         pH = float(parameters.getfirst('ph'))
         fixer.addMissingHydrogens(pH)
@@ -214,6 +211,10 @@ def displayConvertResiduesPage():
 
 def displayMissingAtomsPage():
     uiserver.setCallback(missingAtomsPageCallback)
+    if heterogens == 'none':
+        fixer.removeHeterogens(False)
+    elif heterogens == 'water':
+        fixer.removeHeterogens(True)
     fixer.findMissingAtoms()
     allResidues = list(set(fixer.missingAtoms.keys()).union(fixer.missingTerminals.keys()))
     allResidues.sort(key=lambda x: x.index)

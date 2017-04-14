@@ -1193,6 +1193,10 @@ def main():
             fixer.findNonstandardResidues()
             if options.verbose: print('Replacing nonstandard residues...')
             fixer.replaceNonstandardResidues()
+        if options.heterogens == 'none':
+            fixer.removeHeterogens(False)
+        elif options.heterogens == 'water':
+            fixer.removeHeterogens(True)
         if options.verbose: print('Finding missing atoms...')
         fixer.findMissingAtoms()
         if options.atoms not in ('all', 'heavy'):
@@ -1200,10 +1204,6 @@ def main():
             fixer.missingTerminals = {}
         if options.verbose: print('Adding missing atoms...')
         fixer.addMissingAtoms()
-        if options.heterogens == 'none':
-            fixer.removeHeterogens(False)
-        elif options.heterogens == 'water':
-            fixer.removeHeterogens(True)
         if options.atoms in ('all', 'hydrogen'):
             if options.verbose: print('Adding missing hydrogens...')
             fixer.addMissingHydrogens(options.ph)

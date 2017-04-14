@@ -56,6 +56,8 @@ On this page you select the PDB file to process.  You can load a file from your 
 <h3>Select Chains</h3>
 
 This is the first place where you can choose to remove parts of the structure.  It lists all chains contained in the file.  If you want to remove some of them, just uncheck them before clicking "Continue".
+<p>
+This page also gives options for removing heterogens.  A heterogen is any residue other than a standard amino acid or nucleotide.  The possible options are to keep all heterogens; keep only water while deleting all other heterogens; or delete all heterogens.
 
 <h3>Add Residues</h3>
 
@@ -69,12 +71,11 @@ If the file contains nonstandard residues, this page will allow you to replace t
 
 This page lists all heavy atoms that are missing from the file.  They will be added automatically.
 
-<h3>Remove Heterogens/Add Hydrogens/Add Water</h3>
+<h3>Add Hydrogens and Water</h3>
 
-This page gives you the chance to make several other optional changes:
+This page gives you the chance to make other optional changes:
 
 <ul>
-    <li><b>Remove Heterogens</b> A heterogen is any residue other than a standard amino acid or nucleotide.  PDBFixer can automatically remove them for you.  The possible options are to keep all heterogens; keep only water while deleting all other heterogens; or delete all heterogens.</li>
     <li><b>Add Missing Hydrogens</b> If hydrogen atoms are missing from the file, PDBFixer can add them for you.  Some residues can exist in multiple protonation states.  To select which one to use, you can specify a pH, and the most common form of each residue at that pH will be used.</li>
     <li><b>Add Water</b> Add a water box surrounding the system.  In addition to water, counterions will be added to neutalize the system.  You also may choose to add more ions based on a desired total ionic strength.  Select the ionic strength and the types of ions to use.
 </ul>
@@ -174,6 +175,14 @@ fixer.replaceNonstandardResidues()
 </pre></tt>
 <tt>findNonstandardResidues()</tt> stores the results into the <tt>nonstandardResidues</tt> field, which is a list.  Each entry is a tuple whose first element is a <tt>Residue</tt> object and whose second element is the name of the suggested replacement residue.  Before calling <tt>replaceNonstandardResidues()</tt> you can modify the contents of this list.  For example, you can remove an entry to prevent a particular residue from being replaced, or you can change what it will be replaced with.  You can even add new entries if you want to mutate other residues.
 
+<h3>Remove Heterogens</h3>
+
+If you want to remove heterogens, call
+<p>
+<tt>fixer.removeHeterogens(False)</tt>
+<p>
+The argument specifies whether to keep water molecules.  <tt>False</tt> removes all heterogens including water.  <tt>True</tt> keeps water molecules while removing all other heterogens.
+
 <h3>Add Missing Heavy Atoms</h3>
 
 To add missing heavy atoms, call
@@ -184,14 +193,6 @@ fixer.addMissingAtoms()
 <tt>findMissingAtoms()</tt> identifies all missing heavy atoms and stores them into two fields called <tt>missingAtoms</tt> and <tt>missingTerminals</tt>.  Each of these is a dictionary whose keys are <tt>Residue</tt> objects and whose values are lists of atom names.  <tt>missingAtoms</tt> contains standard atoms that should be present in any residue of that type, while <tt>missingTerminals</tt> contains missing terminal atoms that should be present at the start or end of a chain.  You are free to remove atoms from these dictionaries before continuing, if you want to prevent certain atoms from being added.
 <p>
 <tt>addMissingAtoms()</tt> is the point at which all heavy atoms get added.  This includes the ones identified by <tt>findMissingAtoms()</tt> as well as the missing residues identified by <tt>findMissingResidues()</tt>.  Also, if you used <tt>replaceNonstandardResidues()</tt> to modify any residues, that will have removed any atoms that do not belong in the replacement residue, but it will <i>not</i> have added ones that are missing from the original residue.  <tt>addMissingAtoms()</tt> is the point when those get added.
-
-<h3>Remove Heterogens</h3>
-
-If you want to remove heterogens, call
-<p>
-<tt>fixer.removeHeterogens(False)</tt>
-<p>
-The argument specifies whether to keep water molecules.  <tt>False</tt> removes all heterogens including water.  <tt>True</tt> keeps water molecules while removing all other heterogens.
 
 <h3>Add Missing Hydrogens</h3>
 
@@ -221,9 +222,9 @@ fixer = PDBFixer(filename='myfile.pdb')
 fixer.findMissingResidues()
 fixer.findNonstandardResidues()
 fixer.replaceNonstandardResidues()
+fixer.removeHeterogens(True)
 fixer.findMissingAtoms()
 fixer.addMissingAtoms()
-fixer.removeHeterogens(True)
 fixer.addMissingHydrogens(7.0)
 fixer.addSolvent(fixer.topology.getUnitCellDimensions())
 PDBFile.writeFile(fixer.topology, fixer.positions, open('output.pdb', 'w'))
