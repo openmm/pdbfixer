@@ -26,6 +26,7 @@ ones:
 PDBFixer can fix all of these problems for you in a fully automated way. You
 simply select a file, tell it which problems to fix, and it does everything else.
 """
+
 from __future__ import print_function
 import os
 import sys
