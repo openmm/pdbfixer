@@ -150,9 +150,6 @@ def displayStartPage():
 def displayDeleteChainsPage():
     uiserver.setCallback(deleteChainsPageCallback)
     numChains = len(list(fixer.topology.chains()))
-    if numChains < 2:
-        displayAddResiduesPage()
-        return
     table = ""
     for i, chain in enumerate(fixer.topology.chains()):
         residues = list(r.name for r in chain.residues())
