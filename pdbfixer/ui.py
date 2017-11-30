@@ -128,6 +128,13 @@ def addHydrogensPageCallback(parameters, handler):
         positiveIon = parameters.getfirst('positiveion')+'+'
         negativeIon = parameters.getfirst('negativeion')+'-'
         fixer.addSolvent(boxSize, padding, boxVectors, positiveIon, negativeIon, ionicStrength)
+    if 'addmembrane' in parameters:
+        lipidType = parameters.getfirst('lipidType')
+        padding = float(parameters.getfirst('membranePadding'))*unit.nanometer
+        ionicStrength = float(parameters.getfirst('ionicstrength'))*unit.molar
+        positiveIon = parameters.getfirst('positiveion')+'+'
+        negativeIon = parameters.getfirst('negativeion')+'-'
+        fixer.addMembrane(lipidType, 0*unit.nanometer, padding, positiveIon, negativeIon, ionicStrength)
     displaySaveFilePage()
 
 def saveFilePageCallback(parameters, handler):

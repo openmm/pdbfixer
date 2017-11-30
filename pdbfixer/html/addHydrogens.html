@@ -18,8 +18,20 @@ function validateForm() {
         }
         var geombox = document.getElementById("geometricBoxRadio").checked
         var padsize = document.getElementById("geomPadding").value
-        if (geombox && !(padsize > 0)) {
-            alert("Box padding must be a positive number.")
+        if (geombox && padsize < 0) {
+            alert("Box padding cannot be negative.")
+            return false
+        }
+        var strength = document.getElementById("ionicstrengthfield").value
+        if (!(strength >= 0)) {
+            alert("Ionic strength must be a nonnegative number.")
+            return false
+        }
+    }
+    if (document.getElementById("addMembraneCheckbox").checked) {
+        var padsize = document.getElementById("membranePadding").value
+        if (padsize < 0) {
+            alert("Box padding cannot be negative.")
             return false
         }
         var strength = document.getElementById("ionicstrengthfield").value
@@ -44,7 +56,21 @@ function applyPaddingToWaterBox(padding) {
             pbcxyz[i].value = Math.ceil((padding+molxyz[i])*1000) / 1000;
         }
     }
-}    
+}
+function waterBoxChanged() {
+    checked = document.getElementById('addWaterCheckbox').checked;
+    document.getElementById('addMembraneCheckbox').checked = false;
+    enableControls(document.getElementById('waterInputs'), checked);
+    enableControls(document.getElementById('ionInputs'), checked);
+    enableControls(document.getElementById('membraneInputs'), false);
+}
+function membraneBoxChanged() {
+    checked = document.getElementById('addMembraneCheckbox').checked;
+    document.getElementById('addWaterCheckbox').checked = false;
+    enableControls(document.getElementById('membraneInputs'), checked);
+    enableControls(document.getElementById('ionInputs'), checked);
+    enableControls(document.getElementById('waterInputs'), false);
+}
 </script>
 <style>
 a.tooltip {
@@ -90,10 +116,10 @@ a.tooltip:hover:before {
 Add missing hydrogen atoms?
 <p>
 <input type="checkbox" id="addHydrogensCheckbox" name="addhydrogens" onchange="document.getElementById('phfield').disabled=!document.getElementById('addHydrogensCheckbox').checked" checked> Add hydrogens appropriate for pH <input type="text" id="phfield" name="ph" value="7.0" size="5">
-<h1>Add Water</h1>
-Add a water box surrounding the model?
+<h1>Add Water/Membrane</h1>
+Add a water box or membrane surrounding the model?
 <p>
-<input type="checkbox" id="addWaterCheckbox" name="addwater" onchange="enableControls(document.getElementById('waterInputs'), document.getElementById('addWaterCheckbox').checked)"> Add water
+<input type="checkbox" id="addWaterCheckbox" name="addwater" onchange="waterBoxChanged()"> Add water box
 <div id="waterInputs" style="margin-left:50px">
     <table style="text-align:right">
         <tr>
@@ -122,6 +148,22 @@ Add a water box surrounding the model?
         </tr>
         %s
     </table>
+</div>
+<p>
+<input type="checkbox" id="addMembraneCheckbox" name="addmembrane" onchange="membraneBoxChanged()"> Add membrane and water
+<div id="membraneInputs" style="margin-left:50px">
+    The membrane will lie in the XY plane and be centered at Z=0.  Make sure the protein is properly oriented and positioned.
+    When possible, it is easiest to use a PDB file from <a href="http://opm.phar.umich.edu/">OPM</a> since they are already properly positioned.
+    <p>
+    Lipid type:
+        <select id="lipidType" name="lipidType">
+            <option value="POPC" selected="selected">POPC</option>
+            <option value="POPE">POPE</option>
+        </select>
+    <p>
+    Minimum padding around protein: <input type="text" id="membranePadding" name="membranePadding" value="1.0" size="5"> (nm)
+</div>
+<div id="ionInputs">
     <p>
     Ions will be added to neutralize the model.  You can optionally add more ions based on a desired bulk ionic strength.
     <p>
@@ -137,6 +179,8 @@ Add a water box surrounding the model?
 <script>
 setCurrentStep(6);
 enableControls(document.getElementById('waterInputs'), false);
+enableControls(document.getElementById('membraneInputs'), false);
+enableControls(document.getElementById('ionInputs'), false);
 var molxyz = [].slice.call(document.getElementById('boxContainingAllAtoms').getElementsByTagName('td')).splice(1,3).map(function(td){ return parseFloat(td.textContent)});
 var hiddenInput = document.createElement("input");
 hiddenInput.setAttribute("type", "hidden");
