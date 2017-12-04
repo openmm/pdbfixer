@@ -1063,11 +1063,43 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
 
+    def addMembrane(self, lipidType='POPC', membraneCenterZ=0*unit.nanometer, minimumPadding=1*unit.nanometer, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
+        """Add a lipid membrane to the structure.
+
+        This method adds both lipids and water, so you should call either addSolvent() or addMembrane(),
+        but not both.  See Modeller.addMembrane() for more details.
+
+        Parameters
+        ----------
+        lipidType : string='POPC'
+            the type of lipid to use.  Supported values are 'POPC' and 'POPE'.
+        membraneCenterZ: distance=0*nanometer
+            the position along the Z axis of the center of the membrane
+        minimumPadding : distance=1*nanometer
+            the padding distance to use
+        positiveIon : str, optional, default='Na+'
+            The type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'.
+        negativeIon : str, optional, default='Cl-'
+            The type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'.
+        ionicStrength : simtk.unit.Quantity with units compatible with molar, optional, default=0*molar
+            The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
+        """
+        modeller = app.Modeller(self.topology, self.positions)
+        forcefield = self._createForceField(self.topology, True)
+        modeller.addMembrane(forcefield, lipidType=lipidType, minimumPadding=minimumPadding, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        chains = list(modeller.topology.chains())
+        if len(chains) == 1:
+            chains[0].id = 'A'
+        else:
+            chains[-1].id = chr(ord(chains[-2].id)+1)
+        self.topology = modeller.topology
+        self.positions = modeller.positions
+
     def _createForceField(self, newTopology, water):
         """Create a force field to use for optimizing the positions of newly added atoms."""
 
         if water:
-            forcefield = app.ForceField('amber10.xml', 'tip3p.xml')
+            forcefield = app.ForceField('amber14-all.xml', 'amber14/tip3p.xml')
             nonbonded = [f for f in forcefield._forces if isinstance(f, NonbondedGenerator)][0]
             radii = {'H':0.198, 'Li':0.203, 'C':0.340, 'N':0.325, 'O':0.299, 'F':0.312, 'Na':0.333, 'Mg':0.141,
                      'P':0.374, 'S':0.356, 'Cl':0.347, 'K':0.474, 'Br':0.396, 'Rb':0.527, 'I':0.419, 'Cs':0.605}
