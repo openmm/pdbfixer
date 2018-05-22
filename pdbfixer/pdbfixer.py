@@ -928,25 +928,26 @@ class PDBFixer(object):
             context.setPositions(newPositions)
             mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
-            nearest = self._findNearestDistance(context, newTopology, newAtoms)
-            if nearest < 0.13:
+            if newTopology.getNumResidues() > 1:
+                nearest = self._findNearestDistance(context, newTopology, newAtoms)
+                if nearest < 0.13:
 
-                # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
-                # repulsive interaction to try to improve the result.
+                    # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
+                    # repulsive interaction to try to improve the result.
 
-                for i in range(10):
-                    context.setParameter('C', 0.15*(i+1))
-                    integrator.step(200)
-                    d = self._findNearestDistance(context, newTopology, newAtoms)
-                    if d > nearest:
-                        nearest = d
-                        state = context.getState(getPositions=True)
-                        if nearest >= 0.13:
-                            break
-                context.setState(state)
-                context.setParameter('C', 1.0)
-                mm.LocalEnergyMinimizer.minimize(context)
-                state = context.getState(getPositions=True)
+                    for i in range(10):
+                        context.setParameter('C', 0.15*(i+1))
+                        integrator.step(200)
+                        d = self._findNearestDistance(context, newTopology, newAtoms)
+                        if d > nearest:
+                            nearest = d
+                            state = context.getState(getPositions=True)
+                            if nearest >= 0.13:
+                                break
+                    context.setState(state)
+                    context.setParameter('C', 1.0)
+                    mm.LocalEnergyMinimizer.minimize(context)
+                    state = context.getState(getPositions=True)
 
             # Now create a new Topology, including all atoms from the original one and adding the missing atoms.
 
