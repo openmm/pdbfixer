@@ -1189,7 +1189,7 @@ def main():
         # Run in command line mode.
 
         from optparse import OptionParser
-        parser = OptionParser(usage="Usage: %prog\n       %prog [options] filename\n\nWhen run with no arguments, it launches the user interface.  If any arguments are specified, it runs in command line mode.")
+        parser = OptionParser(usage="Usage: %prog\n       %prog filename [options] \n\nWhen run with no arguments, it launches the user interface.  If any arguments are specified, it runs in command line mode.")
         parser.add_option('--pdbid', default=None, dest='pdbid', metavar='PDBID', help='PDB id to retrieve from RCSB [default: None]')
         parser.add_option('--url', default=None, dest='url', metavar='URL', help='URL to retrieve PDB from [default: None]')
         parser.add_option('--output', default='output.pdb', dest='output', metavar='FILENAME', help='output pdb file [default: output.pdb]')
