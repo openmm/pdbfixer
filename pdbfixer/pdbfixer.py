@@ -587,6 +587,12 @@ class PDBFixer(object):
         chains = [c for c in self.topology.chains() if len(list(c.residues())) > 0]
         chainWithGaps = {}
 
+        # This is PDBFixer's best guess for what might appear in a SEQRES
+
+        knownResidues = set(self.templates.keys()) | set(substitutions.keys())
+        for s in self.sequences:
+            knownResidues.update(s.residues)
+
         # Find the sequence of each chain, with gaps for missing residues.
 
         for chain in chains:
@@ -595,10 +601,19 @@ class PDBFixer(object):
                     chainWithGaps[chain] = chainWithGapsOverride[chain.id]
                 continue
 
-            minResidue = min(int(r.id) for r in chain.residues())
-            maxResidue = max(int(r.id) for r in chain.residues())
-            residues = [None]*(maxResidue-minResidue+1)
+            seqresResidues = []
             for r in chain.residues():
+                if r.name in knownResidues:
+                    seqresResidues.append(r)
+                else:
+                    # assume that everything that follows is a ligand/water
+                    break
+
+            if len(seqresResidues) == 0: continue
+            minResidue = min(int(r.id) for r in seqresResidues)
+            maxResidue = max(int(r.id) for r in seqresResidues)
+            residues = [None]*(maxResidue-minResidue+1)
+            for r in seqresResidues:
                 residues[int(r.id)-minResidue] = r.name
             chainWithGaps[chain] = residues
 
