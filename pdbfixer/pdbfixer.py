@@ -389,7 +389,7 @@ class PDBFixer(object):
 
                 # Create the new residue and add existing heavy atoms.
 
-                newResidue = newTopology.addResidue(residue.name, newChain, residue.id)
+                newResidue = newTopology.addResidue(residue.name, newChain, residue.id, residue.insertionCode)
                 for atom in residue.atoms():
                     if not heavyAtomsOnly or (atom.element is not None and atom.element != hydrogen):
                         if atom.name == 'OXT' and (chain.index, indexInChain+1) in self.missingResidues:
