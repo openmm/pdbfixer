@@ -510,7 +510,7 @@ class PDBFixer(object):
 
             # Create the new residue.
 
-            newResidue = chain.topology.addResidue(residueName, chain, "%d" % ((firstIndex+i)%10000))
+            newResidue = chain.topology.addResidue(residueName, chain, "%d" % (firstIndex+i))
             fraction = (i+1.0)/(numResidues+1.0)
             translate = startPosition + (endPosition-startPosition)*fraction + loopHeight*math.sin(fraction*math.pi)*loopDirection
             templateAtoms = list(template.topology.atoms())
@@ -569,7 +569,7 @@ class PDBFixer(object):
 
         return
 
-    def findMissingResidues(self):
+    def findMissingResidues(self,chainWithGapsOverride=None):
         """Find residues that are missing from the structure.
 
         The results are stored into the missingResidues field, which is a dict.  Each key is a tuple consisting of
@@ -590,6 +590,11 @@ class PDBFixer(object):
         # Find the sequence of each chain, with gaps for missing residues.
 
         for chain in chains:
+            if chainWithGapsOverride:
+                if chain.id in chainWithGapsOverride:
+                    chainWithGaps[chain] = chainWithGapsOverride[chain.id]
+                continue
+
             minResidue = min(int(r.id) for r in chain.residues())
             maxResidue = max(int(r.id) for r in chain.residues())
             residues = [None]*(maxResidue-minResidue+1)
@@ -606,6 +611,8 @@ class PDBFixer(object):
                 if chain.id != sequence.chainId:
                     continue
                 if chain in chainSequence:
+                    continue
+                if chain not in chainWithGaps:
                     continue
                 for offset in range(len(sequence.residues)-len(chainWithGaps[chain])+1):
                     if all(a == b or b == None for a,b in zip(sequence.residues[offset:], chainWithGaps[chain])):
