@@ -855,8 +855,14 @@ class PDBFixer(object):
         self.missingAtoms = missingAtoms
         self.missingTerminals = missingTerminals
 
-    def addMissingAtoms(self):
+    def addMissingAtoms(self, seed=None):
         """Add all missing heavy atoms, as specified by the missingAtoms, missingTerminals, and missingResidues fields.
+
+        Parameters
+        ----------
+        seed : int
+            Integer to set the random seed number of the integrator used in the minimization of the
+            coordinates of the newly-added atoms.
 
         Notes
         -----
@@ -924,6 +930,8 @@ class PDBFixer(object):
             # Do an energy minimization.
 
             integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
+            if seed is not None:
+                integrator.setRandomNumberSeed(seed)
             context = mm.Context(system, integrator)
             context.setPositions(newPositions)
             mm.LocalEnergyMinimizer.minimize(context)
