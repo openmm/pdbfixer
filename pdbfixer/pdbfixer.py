@@ -35,11 +35,19 @@ __version__ = "1.5"
 import simtk.openmm as mm
 import simtk.openmm.app as app
 import simtk.unit as unit
-from simtk.openmm.app.internal import compiled
 from simtk.openmm.app.internal.pdbstructure import PdbStructure
 from simtk.openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
 from simtk.openmm.app.element import hydrogen, oxygen
 from simtk.openmm.app.forcefield import NonbondedGenerator
+
+# Support Cythonized functions in OpenMM 7.3
+# and also implementations in older versions.
+try:
+    from simtk.openmm.app.internal import compiled
+    matchResidue = compiled.matchResidueToTemplate
+except ImportError:
+    matchResidue = app.forcefield._matchResidue
+
 import numpy as np
 import numpy.linalg as lin
 import sys
@@ -1132,7 +1140,7 @@ class PDBFixer(object):
 
             signature = app.forcefield._createResidueSignature([atom.element for atom in residue.atoms()])
             if signature in forcefield._templateSignatures:
-                if any(compiled.matchResidueToTemplate(residue, t, bondedToAtom, False) is not None for t in forcefield._templateSignatures[signature]):
+                if any(matchResidue(residue, t, bondedToAtom) is not None for t in forcefield._templateSignatures[signature]):
                     continue
 
             # Create a new template.
