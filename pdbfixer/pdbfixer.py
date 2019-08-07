@@ -599,12 +599,17 @@ class PDBFixer(object):
         # Find the sequence of each chain, with gaps for missing residues.
 
         for chain in chains:
-            minResidue = min(int(r.id) for r in chain.residues())
-            maxResidue = max(int(r.id) for r in chain.residues())
-            residues = [None]*(maxResidue-minResidue+1)
-            for r in chain.residues():
-                residues[int(r.id)-minResidue] = r.name
-            chainWithGaps[chain] = residues
+            residues = list(chain.residues())
+            ids = [int(r.id) for r in residues]
+            for i, res in enumerate(residues):
+                if res.insertionCode not in ('', ' '):
+                    for j in range(i, len(residues)):
+                        ids[j] += 1
+            minResidue = min(ids)
+            maxResidue = max(ids)
+            chainWithGaps[chain] = [None]*(maxResidue-minResidue+1)
+            for r, id in zip(residues, ids):
+                chainWithGaps[chain][id-minResidue] = r.name
 
         # Try to find the chain that matches each sequence.
 
