@@ -30,7 +30,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 from __future__ import absolute_import
 __author__ = "Peter Eastman"
-__version__ = "1.5"
+__version__ = "1.6"
 
 import simtk.openmm as mm
 import simtk.openmm.app as app
