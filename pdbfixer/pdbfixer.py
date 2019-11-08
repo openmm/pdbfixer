@@ -321,8 +321,8 @@ class PDBFixer(object):
         # convert from entities to chains.
 
         asymData = block.getObj('struct_asym')
+        self.sequences = []
         if asymData is not None:
-            self.sequences = []
             asymIdCol = asymData.getAttributeIndex('id')
             entityIdCol = asymData.getAttributeIndex('entity_id')
             for row in asymData.getRowList():
