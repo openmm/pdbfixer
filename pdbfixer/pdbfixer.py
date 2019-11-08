@@ -306,40 +306,43 @@ class PDBFixer(object):
         # Load the sequence data.
 
         sequenceData = block.getObj('entity_poly_seq')
-        entityIdCol = sequenceData.getAttributeIndex('entity_id')
-        residueCol = sequenceData.getAttributeIndex('mon_id')
         sequences = {}
-        for row in sequenceData.getRowList():
-            entityId = row[entityIdCol]
-            residue = row[residueCol]
-            if entityId not in sequences:
-                sequences[entityId] = []
-            sequences[entityId].append(residue)
+        if sequenceData is not None:
+            entityIdCol = sequenceData.getAttributeIndex('entity_id')
+            residueCol = sequenceData.getAttributeIndex('mon_id')
+            for row in sequenceData.getRowList():
+                entityId = row[entityIdCol]
+                residue = row[residueCol]
+                if entityId not in sequences:
+                    sequences[entityId] = []
+                sequences[entityId].append(residue)
 
         # Sequences are stored by "entity".  There could be multiple chains that are all the same entity, so we need to
         # convert from entities to chains.
 
         asymData = block.getObj('struct_asym')
-        asymIdCol = asymData.getAttributeIndex('id')
-        entityIdCol = asymData.getAttributeIndex('entity_id')
-        self.sequences = []
-        for row in asymData.getRowList():
-            asymId = row[asymIdCol]
-            entityId = row[entityIdCol]
-            if entityId in sequences:
-                self.sequences.append(Sequence(asymId, sequences[entityId]))
+        if asymData is not None:
+            self.sequences = []
+            asymIdCol = asymData.getAttributeIndex('id')
+            entityIdCol = asymData.getAttributeIndex('entity_id')
+            for row in asymData.getRowList():
+                asymId = row[asymIdCol]
+                entityId = row[entityIdCol]
+                if entityId in sequences:
+                    self.sequences.append(Sequence(asymId, sequences[entityId]))
 
         # Load the modified residues.
 
         modData = block.getObj('pdbx_struct_mod_residue')
-        asymIdCol = modData.getAttributeIndex('label_asym_id')
-        resNameCol = modData.getAttributeIndex('label_comp_id')
-        resNumCol = modData.getAttributeIndex('auth_seq_id')
-        standardResCol = modData.getAttributeIndex('parent_comp_id')
         self.modifiedResidues = []
-        if -1 not in (asymIdCol, resNameCol, resNumCol, standardResCol):
-            for row in modData.getRowList():
-                self.modifiedResidues.append(ModifiedResidue(row[asymIdCol], int(row[resNumCol]), row[resNameCol], row[standardResCol]))
+        if modData is not None:
+            asymIdCol = modData.getAttributeIndex('label_asym_id')
+            resNameCol = modData.getAttributeIndex('label_comp_id')
+            resNumCol = modData.getAttributeIndex('auth_seq_id')
+            standardResCol = modData.getAttributeIndex('parent_comp_id')
+            if -1 not in (asymIdCol, resNameCol, resNumCol, standardResCol):
+                for row in modData.getRowList():
+                    self.modifiedResidues.append(ModifiedResidue(row[asymIdCol], int(row[resNumCol]), row[resNameCol], row[standardResCol]))
 
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
         """Create a new Topology in which missing atoms have been added.
