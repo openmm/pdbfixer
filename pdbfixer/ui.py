@@ -265,7 +265,7 @@ def launchUI():
     uiserver.setCallback(controlsCallback, "/controls")
     uiserver.setCallback(imageCallback, "/image")
     displayStartPage()
-    url = 'http://0.0.0.0:'+str(uiserver.server.server_address[1])
+    url = 'http://localhost:'+str(uiserver.server.server_address[1])
     print("PDBFixer running: %s " % url)
     webbrowser.open(url)
 
