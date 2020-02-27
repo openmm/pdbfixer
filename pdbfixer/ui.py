@@ -138,7 +138,7 @@ def addHydrogensPageCallback(parameters, handler):
     displaySaveFilePage()
 
 def saveFilePageCallback(parameters, handler):
-    if 'save' in parameters:
+    if 'pdb' in parameters:
         output = StringIO()
         if fixer.source is not None:
             output.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
@@ -147,6 +147,15 @@ def saveFilePageCallback(parameters, handler):
         except AssertionError:
             print
         handler.sendDownload(output.getvalue(), 'output.pdb')
+    elif 'pdbx' in parameters:
+        output = StringIO()
+        if fixer.source is not None:
+            output.write("# Created with PDBFixer from: %s\n" % fixer.source)
+        try:
+            app.PDBxFile.writeFile(fixer.topology, fixer.positions, output, True)
+        except AssertionError:
+            print
+        handler.sendDownload(output.getvalue(), 'output.cif')
     else:
         displayStartPage()
 
