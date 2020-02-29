@@ -6,7 +6,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2013-2015 Stanford University and the Authors.
+Portions copyright (c) 2013-2020 Stanford University and the Authors.
 Authors: Peter Eastman
 Contributors:
 
@@ -374,6 +374,7 @@ class PDBFixer(object):
         addedAtomMap = {}
         addedOXT = []
         residueCenters = [self._computeResidueCenter(res).value_in_unit(unit.nanometers) for res in self.topology.residues()]*unit.nanometers
+        addedResidues = []
         for chain in self.topology.chains():
             if omitUnknownMolecules and not any(residue.name in self.templates for residue in chain.residues()):
                 continue
@@ -397,7 +398,7 @@ class PDBFixer(object):
                         startPosition = endPosition+outward
                         loopDirection = None
                     firstIndex = int(residue.id)-len(insertHere)
-                    self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, loopDirection, residue, newAtoms, newPositions, firstIndex)
+                    addedResidues += self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, loopDirection, residue, newAtoms, newPositions, firstIndex)
 
                 # Create the new residue and add existing heavy atoms.
 
@@ -452,7 +453,7 @@ class PDBFixer(object):
                             outward *= len(insertHere)*0.5*unit.nanometer/norm
                         endPosition = startPosition+outward
                         firstIndex = int(residue.id)+1
-                        self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, None, residue, newAtoms, newPositions, firstIndex)
+                        addedResidues += self._addMissingResiduesToChain(newChain, insertHere, startPosition, endPosition, None, residue, newAtoms, newPositions, firstIndex)
                         newResidue = list(newChain.residues())[-1]
                         if newResidue.name in proteinResidues:
                             terminalsToAdd = ['OXT']
@@ -484,6 +485,8 @@ class PDBFixer(object):
 
         # Return the results.
 
+        if len(addedResidues) > 0:
+            newPositions = self._optimizedAddedResiduePositions(newTopology, newPositions, addedResidues)
         return (newTopology, newPositions, newAtoms, existingAtomMap)
 
     def _computeResidueCenter(self, residue):
@@ -507,6 +510,7 @@ class PDBFixer(object):
 
         # Add the residues.
 
+        addedResidues = []
         for i, residueName in enumerate(residueNames):
             template = self.templates[residueName]
 
@@ -523,6 +527,7 @@ class PDBFixer(object):
             # Create the new residue.
 
             newResidue = chain.topology.addResidue(residueName, chain, "%d" % ((firstIndex+i)%10000))
+            addedResidues.append(newResidue)
             fraction = (i+1.0)/(numResidues+1.0)
             translate = startPosition + (endPosition-startPosition)*fraction + loopHeight*math.sin(fraction*math.pi)*loopDirection
             templateAtoms = list(template.topology.atoms())
@@ -533,6 +538,53 @@ class PDBFixer(object):
                 newAtoms.append(newAtom)
                 templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
                 newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
+        return addedResidues
+
+    def _optimizedAddedResiduePositions(self, topology, positions, addedResidues):
+        """Optimize the positions of added residues by minimizing a coarse grained model."""
+        # Find the position and size of each residue.
+
+        residueCenters = []
+        residueSizes = []
+        positions = positions.value_in_unit(unit.nanometer)
+        addedResidues = set(addedResidues)
+        for res in topology.residues():
+            numAtoms = len(list(res.atoms()))
+            center = unit.sum([positions[atom.index] for atom in res.atoms()])/numAtoms
+            radius = np.sqrt(unit.sum([unit.norm(positions[atom.index]-center)**2 for atom in res.atoms()])/numAtoms) + 0.1
+            residueCenters.append(center)
+            residueSizes.append(radius)
+
+        # Construct a coarse grained model for optimizing the positions.
+
+        system = mm.System()
+        nb = mm.CustomNonbondedForce('1/((r/(radius1+radius2))^4+1)')
+        nb.addPerParticleParameter('radius')
+        system.addForce(nb)
+        bonded = mm.HarmonicBondForce()
+        system.addForce(bonded)
+        prevRes = None
+        for res, center, radius in zip(topology.residues(), residueCenters, residueSizes):
+            system.addParticle(1.0 if res in addedResidues else 0.0)
+            nb.addParticle([radius])
+            if prevRes is not None and res.chain == prevRes.chain:
+                dist = unit.norm(center-residueCenters[prevRes.index])
+                bonded.addBond(res.index, prevRes.index, dist, 100.0)
+            prevRes = res
+
+        # Run the optimization and update the positions of added residues.
+
+        integrator = mm.VerletIntegrator(1*unit.femtosecond)
+        context = mm.Context(system, integrator)
+        context.setPositions(residueCenters)
+        mm.LocalEnergyMinimizer.minimize(context, tolerance=0.1)
+        newCenters = context.getState(getPositions=True).getPositions().value_in_unit(unit.nanometer)
+        newPositions = positions[:]
+        for res in addedResidues:
+            delta = newCenters[res.index] - residueCenters[res.index]
+            for atom in res.atoms():
+                newPositions[atom.index] += delta
+        return newPositions*unit.nanometer
 
     def removeChains(self, chainIndices=None, chainIds=None):
         """Remove a set of chains from the structure.
