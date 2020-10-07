@@ -117,7 +117,7 @@ def addHydrogensPageCallback(parameters, handler):
             if geometry == 'cube':
                 padding = geompadding
             elif geometry == 'truncatedOctahedron':
-                vectors = Vec3(1,0,0), Vec3(1/3,2*sqrt(2)/3,0), Vec3(-1/3,1/3,sqrt(6)/3)
+                vectors = Vec3(1,0,0), Vec3(1/3,2*sqrt(2)/3,0), Vec3(-1/3,sqrt(2)/3,sqrt(6)/3)
                 boxVectors = [(base_size+geompadding)*v for v in vectors]
             elif geometry == 'rhombicDodecahedron':
                 vectors = Vec3(1,0,0), Vec3(0,1,0), Vec3(0.5,0.5,sqrt(2)/2)
