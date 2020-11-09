@@ -14,4 +14,4 @@ PDBFixer is an easy to use application for fixing problems in Protein Data Bank 
 - Delete unwanted heterogens.
 - Build a water box for explicit solvent simulations.
 
-See our [manual](http://htmlpreview.github.io/?https://raw.github.com/pandegroup/pdbfixer/master/Manual.html)
+See our [manual](https://htmlpreview.github.io/?https://github.com/openmm/pdbfixer/blob/master/Manual.html)
