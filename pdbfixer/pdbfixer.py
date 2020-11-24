@@ -6,7 +6,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2013-2015 Stanford University and the Authors.
+Portions copyright (c) 2013-2020 Stanford University and the Authors.
 Authors: Peter Eastman
 Contributors:
 
@@ -30,7 +30,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 from __future__ import absolute_import
 __author__ = "Peter Eastman"
-__version__ = "1.6"
+__version__ = "1.7"
 
 import simtk.openmm as mm
 import simtk.openmm.app as app
@@ -1098,7 +1098,7 @@ class PDBFixer(object):
         Parameters
         ----------
         lipidType : string='POPC'
-            the type of lipid to use.  Supported values are 'POPC' and 'POPE'.
+            the type of lipid to use.  Supported values are 'POPC', 'POPE', 'DLPC', 'DLPE', 'DMPC', 'DOPC', and 'DPPC'.
         membraneCenterZ: distance=0*nanometer
             the position along the Z axis of the center of the membrane
         minimumPadding : distance=1*nanometer
