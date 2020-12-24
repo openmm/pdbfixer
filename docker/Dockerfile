@@ -1,13 +1,13 @@
 FROM continuumio/miniconda3
+  
+RUN conda update -n base -c defaults conda && \
+    conda install -n base -c omnia -c conda-forge openmm -y && \
+    conda clean --yes --all
 
-RUN conda update -n base -c defaults conda
-
-RUN conda install -c omnia -c conda-forge openmm -y
-
-RUN git clone https://github.com/pandegroup/pdbfixer.git
-
-WORKDIR /pdbfixer
-
-RUN python setup.py install
+RUN git clone https://github.com/ozzzzz/pdbfixer.git && \
+    cd /pdbfixer && \
+    python setup.py install && \
+    cd / && \
+    rm -rf /pdbfixer
 
 ENTRYPOINT pdbfixer
