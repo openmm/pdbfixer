@@ -242,7 +242,7 @@ class PDBFixer(object):
             self.source = filename
             file = open(filename, 'r')
             if _guessFileFormat(file, filename) == 'pdbx':
-                self._initializeFromPDBx(file.read())
+                self._initializeFromPDBx(file)
             else:
                 self._initializeFromPDB(file)
             file.close()
