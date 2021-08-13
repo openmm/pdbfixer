@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 """
-Must have the vollowing environment variables defined:
+Must have the following environment variables defined:
 * BUCKET_NAME : AWS bucket name
 * PREFIX : 'latest' or other version number
 
@@ -21,7 +21,7 @@ else:
     PREFIX = thermopyl.version.short_version
 
 if not any(d.project_name == 's3cmd' for d in pip.get_installed_distributions()):
-    raise ImportError('The s3cmd pacakge is required. try $ pip install s3cmd')
+    raise ImportError('The s3cmd package is required. try $ pip install s3cmd')
 # The secret key is available as a secure environment variable
 # on travis-ci to push the build documentation to Amazon S3.
 with tempfile.NamedTemporaryFile('w') as f:
