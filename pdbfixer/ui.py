@@ -6,9 +6,9 @@ import time
 import sys
 from math import sqrt
 
-import simtk.openmm.app as app
-import simtk.unit as unit
-from simtk.openmm.vec3 import Vec3
+import openmm.app as app
+import openmm.unit as unit
+from openmm.vec3 import Vec3
 
 from .pdbfixer import PDBFixer, proteinResidues, dnaResidues, rnaResidues, _guessFileFormat
 from . import uiserver
