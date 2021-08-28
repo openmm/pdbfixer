@@ -6,7 +6,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2013-2020 Stanford University and the Authors.
+Portions copyright (c) 2013-2021 Stanford University and the Authors.
 Authors: Peter Eastman
 Contributors:
 
@@ -32,18 +32,18 @@ from __future__ import absolute_import
 __author__ = "Peter Eastman"
 __version__ = "1.7"
 
-import simtk.openmm as mm
-import simtk.openmm.app as app
-import simtk.unit as unit
-from simtk.openmm.app.internal.pdbstructure import PdbStructure
-from simtk.openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
-from simtk.openmm.app.element import hydrogen, oxygen
-from simtk.openmm.app.forcefield import NonbondedGenerator
+import openmm as mm
+import openmm.app as app
+import openmm.unit as unit
+from openmm.app.internal.pdbstructure import PdbStructure
+from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
+from openmm.app.element import hydrogen, oxygen
+from openmm.app.forcefield import NonbondedGenerator
 
 # Support Cythonized functions in OpenMM 7.3
 # and also implementations in older versions.
 try:
-    from simtk.openmm.app.internal import compiled
+    from openmm.app.internal import compiled
     matchResidue = compiled.matchResidueToTemplate
 except ImportError:
     matchResidue = app.forcefield._matchResidue
@@ -123,8 +123,8 @@ def _overlayPoints(points1, points2):
 
     Parameters
     ----------
-    points1 (numpy array of simtk.unit.Quantity with units compatible with distance) - reference set of coordinates
-    points2 (numpy array of simtk.unit.Quantity with units compatible with distance) - set of coordinates to be rotated
+    points1 (numpy array of openmm.unit.Quantity with units compatible with distance) - reference set of coordinates
+    points2 (numpy array of openmm.unit.Quantity with units compatible with distance) - set of coordinates to be rotated
 
     Returns
     -------
@@ -356,11 +356,11 @@ class PDBFixer(object):
 
         Returns
         -------
-        newTopology : simtk.openmm.app.Topology
+        newTopology : openmm.app.Topology
             A new Topology object containing atoms from the old.
-        newPositions : list of simtk.unit.Quantity with units compatible with nanometers
+        newPositions : list of openmm.unit.Quantity with units compatible with nanometers
             Atom positions for the new Topology object.
-        newAtoms : simtk.openmm.app.Topology.Atom
+        newAtoms : openmm.app.Topology.Atom
             New atom objects.
         existingAtomMap : dict
             Mapping from old atoms to new atoms.
@@ -1051,17 +1051,17 @@ class PDBFixer(object):
 
         Parameters
         ----------
-        boxSize : simtk.openmm.Vec3, optional, default=None
+        boxSize : openmm.Vec3, optional, default=None
             The size of the box to fill with water.  If specified, padding and boxVectors must not be specified.
-        padding : simtk.unit.Quantity compatible with nanometers, optional, default=None
+        padding : openmm.unit.Quantity compatible with nanometers, optional, default=None
             Padding around macromolecule for filling box with water.  If specified, boxSize and boxVectors must not be specified.
-        boxVectors : 3-tuple of simtk.openmm.Vec3, optional, default=None
+        boxVectors : 3-tuple of openmm.Vec3, optional, default=None
             Three vectors specifying the geometry of the box. If specified, padding and boxSize must not be specified.
         positiveIon : str, optional, default='Na+'
             The type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'.
         negativeIon : str, optional, default='Cl-'
             The type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'.
-        ionicStrength : simtk.unit.Quantity with units compatible with molar, optional, default=0*molar
+        ionicStrength : openmm.unit.Quantity with units compatible with molar, optional, default=0*molar
             The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
 
         Examples
@@ -1107,7 +1107,7 @@ class PDBFixer(object):
             The type of positive ion to add.  Allowed values are 'Cs+', 'K+', 'Li+', 'Na+', and 'Rb+'.
         negativeIon : str, optional, default='Cl-'
             The type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'.
-        ionicStrength : simtk.unit.Quantity with units compatible with molar, optional, default=0*molar
+        ionicStrength : openmm.unit.Quantity with units compatible with molar, optional, default=0*molar
             The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
         """
         modeller = app.Modeller(self.topology, self.positions)
