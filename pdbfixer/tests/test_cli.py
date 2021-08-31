@@ -13,10 +13,11 @@ Test command-line interface.
 # GLOBAL IMPORTS
 #=============================================================================================
 
+import os
 import subprocess
 from subprocess import CalledProcessError
 
-from nose.plugins.skip import Skip, SkipTest
+import pytest
 
 #=============================================================================================
 # UNIT TESTS
@@ -50,5 +51,6 @@ def test_help():
 def test_pdbid():
     run_cli('--pdbid 1LE1')
 
+@pytest.mark.skipif(os.getenv("GITHUB_ACTION") is not None, reason="Cannot download during CI")
 def test_url():
     run_cli('--url "http://www.rcsb.org/pdb/download/downloadFile.do?fileFormat=pdb&compression=NO&structureId=1LE1"')

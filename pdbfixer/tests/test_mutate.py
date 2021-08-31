@@ -1,7 +1,7 @@
-from nose.tools import ok_, eq_, raises
-import simtk.openmm.app as app
+import openmm.app as app
 import pdbfixer
 import tempfile
+from pytest import raises
 
 def test_mutate_1():
     fixer = pdbfixer.PDBFixer(pdbid='1VII')
@@ -48,21 +48,21 @@ def test_mutate_2():
     desired_atom_names = set(["C", "N", "CA", "CB", "CG", "CD1", "CD2", "O", "H", "HA", "HB2", "HB3", "HD11", "HD12", "HD13", "HD21", "HD22", "HD23", "HG"])
     assert atom_names == desired_atom_names, "Atom Names did not match for LEU 57"
 
-@raises(ValueError)
 def test_mutate_3_fails():
-    fixer = pdbfixer.PDBFixer(pdbid='1VII')
-    fixer.applyMutations(["ALA-57-GLY", "SER-57-ALA"], "A")
+    with raises(ValueError):
+        fixer = pdbfixer.PDBFixer(pdbid='1VII')
+        fixer.applyMutations(["ALA-57-GLY", "SER-57-ALA"], "A")
 
-@raises(KeyError)
 def test_mutate_4_fails():
-    fixer = pdbfixer.PDBFixer(pdbid='1VII')
-    fixer.applyMutations(["ALA-57-WTF", "SER-56-ALA"], "A")
+    with raises(KeyError):
+        fixer = pdbfixer.PDBFixer(pdbid='1VII')
+        fixer.applyMutations(["ALA-57-WTF", "SER-56-ALA"], "A")
 
 
-@raises(KeyError)
 def test_mutate_5_fails():
-    fixer = pdbfixer.PDBFixer(pdbid='1VII')
-    fixer.applyMutations(["ALA-1000-GLY", "SER-56-ALA"], "A")
+    with raises(KeyError):
+        fixer = pdbfixer.PDBFixer(pdbid='1VII')
+        fixer.applyMutations(["ALA-1000-GLY", "SER-56-ALA"], "A")
 
 def test_mutate_multiple_copies_of_chain_A():
     fixer = pdbfixer.PDBFixer(pdbid='1OL5')

@@ -1,7 +1,7 @@
 
 from __future__ import print_function
 import pdbfixer
-import simtk.openmm 
+import openmm
 
 import os
 import os.path
@@ -29,9 +29,9 @@ class Watchdog(BaseException):
         raise self
 
 def simulate(pdbcode, pdb_filename):
-    from simtk.openmm import app
-    import simtk.openmm as mm
-    from simtk import unit
+    from openmm import app
+    import openmm.openmm as mm
+    from openmm import unit
     from sys import stdout
 
     # Load the PDB file.
