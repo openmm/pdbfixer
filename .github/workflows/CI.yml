@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - jms-updates
   pull_request:
     branches:
       - master
