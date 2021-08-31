@@ -1,0 +1,10 @@
+name: pdbfixer-dev
+
+channels:
+  - conda-forge
+
+dependencies:
+  - pytest
+  - openmm
+  - numpy
+  - pip
