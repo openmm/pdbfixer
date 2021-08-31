@@ -6,4 +6,5 @@ channels:
 dependencies:
   - pytest
   - openmm
+  - numpy
   - pip

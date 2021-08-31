@@ -28,7 +28,9 @@ jobs:
           environment-file: devtools/environment-dev.yaml
 
       - name: "Install PDBFixer"
-        shell: bash {0}
+        shell: bash -l {0}
         run: |
+          which python
+          python -V
           pip install -e .
           pytest -vs pdbfixer
