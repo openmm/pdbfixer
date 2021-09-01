@@ -31,5 +31,6 @@ jobs:
         run: |
           which python
           python -V
-          pip install -e .
+          pip install codespell -e .
+          codespell --skip="*.pdb,*.xml"
           pytest -vs pdbfixer

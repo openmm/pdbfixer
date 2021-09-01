@@ -742,7 +742,7 @@ class PDBFixer(object):
         -----
 
         We require three letter codes to avoid possible ambiguitities.
-        We can't guarnatee that the resulting model is a good one; for
+        We can't guarantee that the resulting model is a good one; for
         significant changes in sequence, you should probably be using
         a standalone homology modelling tool.
 
