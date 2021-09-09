@@ -917,7 +917,7 @@ class PDBFixer(object):
             # Add the new bonds to the original Topology.
 
             inverseAtomMap = dict((y,x) for (x,y) in existingAtomMap.items())
-            for atom1, atom2 in newTopology.bonds():
+            for atom1, atom2 in newBonds:
                 self.topology.addBond(inverseAtomMap[atom1], inverseAtomMap[atom2])
         else:
 
