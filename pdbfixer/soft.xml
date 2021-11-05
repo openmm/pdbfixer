@@ -4223,7 +4223,7 @@
   <Improper class1="C" class2="C" class3="C" class4="O"  periodicity1="2" phase1="3.14159" k1="43.932" />
  </PeriodicTorsionForce>
  <Script>
-import simtk.openmm as mm
+import openmm as mm
 nb = mm.CustomNonbondedForce('C/((r/0.2)^4+1)')
 nb.addGlobalParameter('C', 1.0)
 sys.addForce(nb)
