@@ -39,6 +39,16 @@ Before running PDBFixer, you must first install <a href="https://simtk.org/home/
 <p>
 Alternatively, PDBFixer is included as part of the <a href="https://omnia.md">Omnia</a> suite for molecular simulation.  If you install the suite, PDBFixer and its dependencies will be included.
 
+<h3>Alternative way with <a href="https://www.docker.com/">docker</a> container</h3>
+
+To run docker container with Conda, OpenMM and PDBFixer inside just run following commands:
+<p>
+<tt>cd docker</tt><br>
+<tt>docker build -t pdbfixer .</tt><br>
+<tt>docker run -it -p 8000:8000 pdbfixer</tt>
+<p>
+
+After that you can launch a web browser yourself and point it to <a href="http://localhost:8000">http://localhost:8000</a>.
 
 <h1>3. PDBFixer as a Desktop Application</h1>
 

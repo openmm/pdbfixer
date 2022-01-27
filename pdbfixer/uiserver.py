@@ -66,7 +66,7 @@ class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
 
 content = ""
 callback = {}
-server = _ThreadingHTTPServer(("localhost", 8000), _Handler)
+server = _ThreadingHTTPServer(("0.0.0.0", 8000), _Handler)
 
 def beginServing():
     t = Thread(target=server.serve_forever)
