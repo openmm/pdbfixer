@@ -113,7 +113,7 @@ def test_build_and_simulate():
 
         # PDB setup parameters.
         # TODO: Try several combinations?
-        from simtk import unit
+        from openmm import unit
         pH = 7.0
         ionic = 50.0 * unit.millimolar
         box = 10.0 * unit.angstrom
@@ -128,7 +128,7 @@ def test_build_and_simulate():
         build_successful = False
         try:        
             from pdbfixer.pdbfixer import PDBFixer
-            from simtk.openmm import app
+            from openmm import app
             stage = "Creating PDBFixer..."
             fixer = PDBFixer(pdbid=pdbcode)
             stage = "Finding missing residues..."
