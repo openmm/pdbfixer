@@ -230,7 +230,7 @@ If you want to add a lipid membrane, call <tt>addMembrane()</tt>.  This method a
 Here is a complete example that ties this together.  It adds all missing atoms including heavy atoms, missing residues, and hydrogens.  It replaces all nonstandard residues by their standard equivalents then deletes all remaining heterogens except water.  Finally, it fills in all gaps with water; that is, it adds a water box whose dimensions match the crystallographic unit cell.  It saves the result to a file called output.pdb.
 <tt><pre>
 from pdbfixer import PDBFixer
-from simtk.openmm.app import PDBFile
+from openmm.app import PDBFile
 fixer = PDBFixer(filename='myfile.pdb')
 fixer.findMissingResidues()
 fixer.findNonstandardResidues()

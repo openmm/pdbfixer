@@ -33,9 +33,9 @@ from __future__ import print_function
 __author__ = "Peter Eastman"
 __version__ = "1.0"
 
-import simtk.openmm.app as app
-import simtk.openmm.app.element as elem
-import simtk.openmm.app.forcefield as ff
+import openmm.app as app
+import openmm.app.element as elem
+import openmm.app.forcefield as ff
 
 forcefield = app.ForceField('amber99sbildn.xml', 'tip3p.xml')
 bondK = 10000.0
@@ -143,7 +143,7 @@ print(' </PeriodicTorsionForce>')
 # Print the script to add the soft-core nonbonded force.
 
 print(' <Script>')
-print("""import simtk.openmm as mm
+print("""import openmm as mm
 nb = mm.CustomNonbondedForce('C/((r/0.2)^4+1)')
 nb.addGlobalParameter('C', 1.0)
 sys.addForce(nb)

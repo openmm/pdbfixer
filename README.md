@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/pandegroup/pdbfixer.svg?branch=master)](https://travis-ci.org/pandegroup/pdbfixer)
+[![PDBFixer Continuous Integration Workflow](https://github.com/openmm/pdbfixer/actions/workflows/CI.yml/badge.svg)](https://github.com/openmm/pdbfixer/actions/workflows/CI.yml)
 
 PDBFixer
 ========
