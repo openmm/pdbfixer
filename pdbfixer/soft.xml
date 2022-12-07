@@ -86,25 +86,6 @@
    <ExternalBond from="0"/>
    <ExternalBond from="9"/>
   </Residue>
-  <Residue name="ASH">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="2C"/>
-   <Atom name="CG" type="C"/>
-   <Atom name="OD1" type="O"/>
-   <Atom name="OD2" type="OH"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="6"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="5"/>
-   <Bond from="6" to="7"/>
-   <ExternalBond from="0"/>
-   <ExternalBond from="6"/>
-  </Residue>
   <Residue name="ASN">
    <Atom name="N" type="N"/>
    <Atom name="CA" type="CX"/>
@@ -143,21 +124,6 @@
    <ExternalBond from="0"/>
    <ExternalBond from="6"/>
   </Residue>
-  <Residue name="CYM">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="SG" type="SH"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="4"/>
-   <Bond from="2" to="3"/>
-   <Bond from="4" to="5"/>
-   <ExternalBond from="0"/>
-   <ExternalBond from="4"/>
-  </Residue>
   <Residue name="CYS">
    <Atom name="N" type="N"/>
    <Atom name="CA" type="CX"/>
@@ -188,27 +154,6 @@
    <ExternalBond from="3"/>
    <ExternalBond from="0"/>
    <ExternalBond from="4"/>
-  </Residue>
-  <Residue name="GLH">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="2C"/>
-   <Atom name="CG" type="2C"/>
-   <Atom name="CD" type="C"/>
-   <Atom name="OE1" type="O"/>
-   <Atom name="OE2" type="OH"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="7"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="4" to="5"/>
-   <Bond from="4" to="6"/>
-   <Bond from="7" to="8"/>
-   <ExternalBond from="0"/>
-   <ExternalBond from="7"/>
   </Residue>
   <Residue name="GLN">
    <Atom name="N" type="N"/>
@@ -392,27 +337,6 @@
    <Bond from="6" to="7"/>
    <ExternalBond from="0"/>
    <ExternalBond from="6"/>
-  </Residue>
-  <Residue name="LYN">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="CG" type="CT"/>
-   <Atom name="CD" type="CT"/>
-   <Atom name="CE" type="CT"/>
-   <Atom name="NZ" type="N3"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="7"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="7" to="8"/>
-   <ExternalBond from="0"/>
-   <ExternalBond from="7"/>
   </Residue>
   <Residue name="LYS">
    <Atom name="N" type="N"/>
