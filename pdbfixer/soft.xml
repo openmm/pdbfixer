@@ -139,22 +139,6 @@
    <ExternalBond from="0"/>
    <ExternalBond from="4"/>
   </Residue>
-  <Residue name="CYX">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="2C"/>
-   <Atom name="SG" type="S"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="4"/>
-   <Bond from="2" to="3"/>
-   <Bond from="4" to="5"/>
-   <ExternalBond from="3"/>
-   <ExternalBond from="0"/>
-   <ExternalBond from="4"/>
-  </Residue>
   <Residue name="GLN">
    <Atom name="N" type="N"/>
    <Atom name="CA" type="CX"/>
@@ -208,55 +192,7 @@
    <ExternalBond from="0"/>
    <ExternalBond from="2"/>
   </Residue>
-  <Residue name="HID">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="CG" type="CC"/>
-   <Atom name="ND1" type="NA"/>
-   <Atom name="CE1" type="CR"/>
-   <Atom name="NE2" type="NB"/>
-   <Atom name="CD2" type="CV"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <ExternalBond from="0"/>
-   <ExternalBond from="8"/>
-  </Residue>
-  <Residue name="HIE">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="CG" type="CC"/>
-   <Atom name="ND1" type="NB"/>
-   <Atom name="CE1" type="CR"/>
-   <Atom name="NE2" type="NA"/>
-   <Atom name="CD2" type="CW"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <ExternalBond from="0"/>
-   <ExternalBond from="8"/>
-  </Residue>
-  <Residue name="HIP">
+  <Residue name="HIS">
    <Atom name="N" type="N"/>
    <Atom name="CA" type="CX"/>
    <Atom name="CB" type="CT"/>
@@ -628,23 +564,6 @@
    <Bond from="4" to="6"/>
    <ExternalBond from="0"/>
   </Residue>
-  <Residue name="CCYX">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="2C"/>
-   <Atom name="SG" type="S"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O2"/>
-   <Atom name="OXT" type="O2"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="4"/>
-   <Bond from="2" to="3"/>
-   <Bond from="4" to="5"/>
-   <Bond from="4" to="6"/>
-   <ExternalBond from="3"/>
-   <ExternalBond from="0"/>
-  </Residue>
   <Residue name="CGLN">
    <Atom name="N" type="N"/>
    <Atom name="CA" type="CX"/>
@@ -701,57 +620,7 @@
    <Bond from="2" to="4"/>
    <ExternalBond from="0"/>
   </Residue>
-  <Residue name="CHID">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="CG" type="CC"/>
-   <Atom name="ND1" type="NA"/>
-   <Atom name="CE1" type="CR"/>
-   <Atom name="NE2" type="NB"/>
-   <Atom name="CD2" type="CV"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O2"/>
-   <Atom name="OXT" type="O2"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <Bond from="8" to="10"/>
-   <ExternalBond from="0"/>
-  </Residue>
-  <Residue name="CHIE">
-   <Atom name="N" type="N"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="CG" type="CC"/>
-   <Atom name="ND1" type="NB"/>
-   <Atom name="CE1" type="CR"/>
-   <Atom name="NE2" type="NA"/>
-   <Atom name="CD2" type="CW"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O2"/>
-   <Atom name="OXT" type="O2"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <Bond from="8" to="10"/>
-   <ExternalBond from="0"/>
-  </Residue>
-  <Residue name="CHIP">
+  <Residue name="CHIS">
    <Atom name="N" type="N"/>
    <Atom name="CA" type="CX"/>
    <Atom name="CB" type="CT"/>
@@ -1144,21 +1013,6 @@
    <Bond from="4" to="5"/>
    <ExternalBond from="4"/>
   </Residue>
-  <Residue name="NCYX">
-   <Atom name="N" type="N3"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="2C"/>
-   <Atom name="SG" type="S"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="4"/>
-   <Bond from="2" to="3"/>
-   <Bond from="4" to="5"/>
-   <ExternalBond from="3"/>
-   <ExternalBond from="4"/>
-  </Residue>
   <Residue name="NGLN">
    <Atom name="N" type="N3"/>
    <Atom name="CA" type="CX"/>
@@ -1209,53 +1063,7 @@
    <Bond from="2" to="3"/>
    <ExternalBond from="2"/>
   </Residue>
-  <Residue name="NHID">
-   <Atom name="N" type="N3"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="CG" type="CC"/>
-   <Atom name="ND1" type="NA"/>
-   <Atom name="CE1" type="CR"/>
-   <Atom name="NE2" type="NB"/>
-   <Atom name="CD2" type="CV"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <ExternalBond from="8"/>
-  </Residue>
-  <Residue name="NHIE">
-   <Atom name="N" type="N3"/>
-   <Atom name="CA" type="CX"/>
-   <Atom name="CB" type="CT"/>
-   <Atom name="CG" type="CC"/>
-   <Atom name="ND1" type="NB"/>
-   <Atom name="CE1" type="CR"/>
-   <Atom name="NE2" type="NA"/>
-   <Atom name="CD2" type="CW"/>
-   <Atom name="C" type="C"/>
-   <Atom name="O" type="O"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <ExternalBond from="8"/>
-  </Residue>
-  <Residue name="NHIP">
+  <Residue name="NHIS">
    <Atom name="N" type="N3"/>
    <Atom name="CA" type="CX"/>
    <Atom name="CB" type="CT"/>
