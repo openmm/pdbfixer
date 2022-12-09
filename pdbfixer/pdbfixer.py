@@ -790,7 +790,7 @@ class PDBFixer(object):
             residue_map[residue] = new_name
 
         # If there are mutations to be made, make them.
-        if len(residue_map) > 0:            
+        if len(residue_map) > 0:
             deleteAtoms = [] # list of atoms to delete
 
             # Find atoms that should be deleted.
@@ -1017,13 +1017,15 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
 
-    def addMissingHydrogens(self, pH=7.0):
+    def addMissingHydrogens(self, pH=7.0, forcefield=None):
         """Add missing hydrogen atoms to the structure.
 
         Parameters
         ----------
         pH : float, optional, default=7.0
             The pH based on which to select hydrogens.
+        forcefield : ForceField, optional, default=None
+            The forcefield used when adding and minimizing hydrogens. If None, a default forcefield is used.
 
         Notes
         -----
@@ -1042,7 +1044,7 @@ class PDBFixer(object):
 
         """
         modeller = app.Modeller(self.topology, self.positions)
-        modeller.addHydrogens(pH=pH)
+        modeller.addHydrogens(pH=pH, forcefield=forcefield)
         self.topology = modeller.topology
         self.positions = modeller.positions
 
