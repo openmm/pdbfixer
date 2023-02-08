@@ -4,7 +4,7 @@
     </head>
 <body>
 <h1 style="text-align:center">PDBFixer</h1>
-<div style="text-align:center">Copyright 2013-2017 by Peter Eastman and Stanford University</div>
+<div style="text-align:center">Copyright 2013-2023 by Peter Eastman and Stanford University</div>
 
 <h1>1. Introduction</h1>
 
@@ -28,16 +28,18 @@ PDBFixer can be used in three different ways: as a desktop application with a gr
 
 <h1>2. Installation</h2>
 
-To install PDBFixer, navigate to the root directory of the source distribution you've download and type
+The easiest way to install PDBFixer is with conda or mamba.
+<p>
+<tt>conda install -c conda-forge pdbfixer</tt>
+</p>
+Alternatively you can install it from source.  Download the repository, navigate to the root directory, and type
 <p>
 <tt>python setup.py install</tt>
 <p>
 This will install the PDBFixer python package as well as the command line program <tt>pdbfixer</tt>.
 
 <p>
-Before running PDBFixer, you must first install <a href="https://simtk.org/home/openmm">OpenMM</a> 6.3 or later.  Follow the installation instructions in the OpenMM manual.  It is also recommended that you install CUDA or OpenCL, since the performance will usually be faster than when running on the CPU platform.  PDBFixer requires that <a href="http://www.numpy.org">NumPy</a> be installed.
-<p>
-Alternatively, PDBFixer is included as part of the <a href="https://omnia.md">Omnia</a> suite for molecular simulation.  If you install the suite, PDBFixer and its dependencies will be included.
+Before running PDBFixer, you must first install <a href="https://openmm.org">OpenMM</a>.  Follow the installation instructions in the OpenMM manual.  It is also recommended that you install CUDA or OpenCL, since the performance will usually be faster than when running on the CPU platform.  PDBFixer requires that <a href="http://www.numpy.org">NumPy</a> be installed.  All of these dependencies are included automatically when installing with conda.
 
 
 <h1>3. PDBFixer as a Desktop Application</h1>
