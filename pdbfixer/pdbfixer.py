@@ -1197,16 +1197,24 @@ class PDBFixer(object):
 
     def _findNearestDistance(self, context, topology, newAtoms):
         """Given a set of newly added atoms, find the closest distance between one of those atoms and another atom."""
-
         positions = context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(unit.nanometer)
-        atomResidue = [atom.residue for atom in topology.atoms()]
-        nearest = sys.float_info.max
-        for atom in newAtoms:
-            p = positions-positions[atom.index]
-            dist = math.sqrt(min(np.dot(p[i], p[i]) for i in range(len(atomResidue)) if atomResidue[i] != atom.residue))
-            if dist < nearest:
-                nearest = dist
-        return nearest
+        newAtomPositions = positions[[atom.index for atom in newAtoms], :]  # Shape: (numNewAtoms, 3)
+        differences = positions[np.newaxis, :, :] - newAtomPositions[:, np.newaxis, :]  # Shape: (numNewAtoms, numTotalAtoms, 3)
+        squaredDifferences = differences**2
+
+        # This is several times faster than np.sum(squaredDifferences, axis=-1).
+        squaredDistances = squaredDifferences[:, :, 0] + squaredDifferences[:, :, 1] + squaredDifferences[:, :, 2]  # Shape: (numNewAtoms, numTotalAtoms)
+
+        allAtomResidues = np.array([int(atom.residue.id) for atom in topology.atoms()])
+        newAtomResidues = np.array([int(atom.residue.id) for atom in newAtoms])
+
+        # We only want to consider distances between atoms belonging to different residues, so we
+        # mask out distances between atoms in the same residue.
+        residueMask = (allAtomResidues[np.newaxis, :] != newAtomResidues[:, np.newaxis])  # Shape: (numNewAtoms, numTotalAtoms)
+        maxFloat = np.finfo(squaredDistances.dtype).max
+        minSquaredDistance = np.min(squaredDistances, where=residueMask, initial=maxFloat)
+
+        return np.sqrt(minSquaredDistance)
 
 
 def main():
