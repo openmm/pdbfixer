@@ -953,15 +953,18 @@ class PDBFixer(object):
             context.setPositions(newPositions)
             mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
-            cutoff = 0.13
-            exclusions = dict((atom, set([a.index for a in atom.residue.atoms()])) for atom in newAtoms)
-            for a1, a2 in newTopology.bonds():
-                if a1 in exclusions:
-                    exclusions[a1].add(a2.index)
-                if a2 in exclusions:
-                    exclusions[a2].add(a1.index)
             if newTopology.getNumResidues() > 1:
-                nearest = self._findNearestDistance(context, newTopology, newAtoms, cutoff, exclusions)
+                # When looking for pairs of atoms that are too close to each other, exclude pairs that
+                # are in the same residue or are directly bonded to each other.
+
+                exclusions = dict((atom, {a.index for a in atom.residue.atoms()}) for atom in newAtoms)
+                for a1, a2 in newTopology.bonds():
+                    if a1 in exclusions:
+                        exclusions[a1].add(a2.index)
+                    if a2 in exclusions:
+                        exclusions[a2].add(a1.index)
+                cutoff = 0.13
+                nearest = self._findNearestDistance(context, newAtoms, cutoff, exclusions)
                 if nearest < cutoff:
 
                     # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
@@ -970,7 +973,7 @@ class PDBFixer(object):
                     for i in range(10):
                         context.setParameter('C', 0.15*(i+1))
                         integrator.step(200)
-                        d = self._findNearestDistance(context, newTopology, newAtoms, cutoff, exclusions)
+                        d = self._findNearestDistance(context, newAtoms, cutoff, exclusions)
                         if d > nearest:
                             nearest = d
                             state = context.getState(getPositions=True)
@@ -1202,23 +1205,23 @@ class PDBFixer(object):
                 forcefield._templateSignatures[signature] = [template]
         return forcefield
 
-    def _findNearestDistance(self, context, topology, newAtoms, cutoff, exclusions):
+    def _findNearestDistance(self, context, newAtoms, cutoff, exclusions):
         """Given a set of newly added atoms, find the closest distance between one of those atoms and another atom."""
 
         positions = context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(unit.nanometer)
         boxSize = np.max(positions, axis=0)-np.min(positions, axis=0)
         boxVectors = [(boxSize[0], 0, 0), (0, boxSize[1], 0), (0, 0, boxSize[2])]
         cells = app.modeller._CellList(positions, cutoff, boxVectors, False)
-        nearest2 = sys.float_info.max
+        nearest_squared = sys.float_info.max
         for atom in newAtoms:
             excluded = exclusions[atom]
             for i in cells.neighbors(positions[atom.index]):
                 if i not in excluded:
                     p = positions[atom.index]-positions[i]
-                    dist2 = np.dot(p, p)
-                    if dist2 < nearest2:
-                        nearest2 = dist2
-        return np.sqrt(nearest2)
+                    dist_squared = np.dot(p, p)
+                    if dist_squared < nearest_squared:
+                        nearest_squared = dist_squared
+        return np.sqrt(nearest_squared)
 
 
 def main():
