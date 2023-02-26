@@ -6,7 +6,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2013-2022 Stanford University and the Authors.
+Portions copyright (c) 2013-2023 Stanford University and the Authors.
 Authors: Peter Eastman
 Contributors:
 
@@ -826,7 +826,7 @@ class PDBFixer(object):
             residue_map[residue] = new_name
 
         # If there are mutations to be made, make them.
-        if len(residue_map) > 0:            
+        if len(residue_map) > 0:
             deleteAtoms = [] # list of atoms to delete
 
             # Find atoms that should be deleted.
@@ -990,8 +990,18 @@ class PDBFixer(object):
             mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
             if newTopology.getNumResidues() > 1:
-                nearest = self._findNearestDistance(context, newTopology, newAtoms)
-                if nearest < 0.13:
+                # When looking for pairs of atoms that are too close to each other, exclude pairs that
+                # are in the same residue or are directly bonded to each other.
+
+                exclusions = dict((atom, {a.index for a in atom.residue.atoms()}) for atom in newAtoms)
+                for a1, a2 in newTopology.bonds():
+                    if a1 in exclusions:
+                        exclusions[a1].add(a2.index)
+                    if a2 in exclusions:
+                        exclusions[a2].add(a1.index)
+                cutoff = 0.13
+                nearest = self._findNearestDistance(context, newAtoms, cutoff, exclusions)
+                if nearest < cutoff:
 
                     # Some atoms are very close together.  Run some dynamics while slowly increasing the strength of the
                     # repulsive interaction to try to improve the result.
@@ -999,11 +1009,11 @@ class PDBFixer(object):
                     for i in range(10):
                         context.setParameter('C', 0.15*(i+1))
                         integrator.step(200)
-                        d = self._findNearestDistance(context, newTopology, newAtoms)
+                        d = self._findNearestDistance(context, newAtoms, cutoff, exclusions)
                         if d > nearest:
                             nearest = d
                             state = context.getState(getPositions=True)
-                            if nearest >= 0.13:
+                            if nearest >= cutoff:
                                 break
                     context.setState(state)
                     context.setParameter('C', 1.0)
@@ -1053,13 +1063,15 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
 
-    def addMissingHydrogens(self, pH=7.0):
+    def addMissingHydrogens(self, pH=7.0, forcefield=None):
         """Add missing hydrogen atoms to the structure.
 
         Parameters
         ----------
         pH : float, optional, default=7.0
             The pH based on which to select hydrogens.
+        forcefield : ForceField, optional, default=None
+            The forcefield used when adding and minimizing hydrogens. If None, a default forcefield is used.
 
         Notes
         -----
@@ -1078,7 +1090,7 @@ class PDBFixer(object):
 
         """
         modeller = app.Modeller(self.topology, self.positions)
-        modeller.addHydrogens(pH=pH)
+        modeller.addHydrogens(pH=pH, forcefield=forcefield)
         self.topology = modeller.topology
         self.positions = modeller.positions
 
@@ -1229,18 +1241,23 @@ class PDBFixer(object):
                 forcefield._templateSignatures[signature] = [template]
         return forcefield
 
-    def _findNearestDistance(self, context, topology, newAtoms):
+    def _findNearestDistance(self, context, newAtoms, cutoff, exclusions):
         """Given a set of newly added atoms, find the closest distance between one of those atoms and another atom."""
 
         positions = context.getState(getPositions=True).getPositions(asNumpy=True).value_in_unit(unit.nanometer)
-        atomResidue = [atom.residue for atom in topology.atoms()]
-        nearest = sys.float_info.max
+        boxSize = np.max(positions, axis=0)-np.min(positions, axis=0)
+        boxVectors = [(boxSize[0], 0, 0), (0, boxSize[1], 0), (0, 0, boxSize[2])]
+        cells = app.modeller._CellList(positions, cutoff, boxVectors, False)
+        nearest_squared = sys.float_info.max
         for atom in newAtoms:
-            p = positions-positions[atom.index]
-            dist = math.sqrt(min(np.dot(p[i], p[i]) for i in range(len(atomResidue)) if atomResidue[i] != atom.residue))
-            if dist < nearest:
-                nearest = dist
-        return nearest
+            excluded = exclusions[atom]
+            for i in cells.neighbors(positions[atom.index]):
+                if i not in excluded:
+                    p = positions[atom.index]-positions[i]
+                    dist_squared = np.dot(p, p)
+                    if dist_squared < nearest_squared:
+                        nearest_squared = dist_squared
+        return np.sqrt(nearest_squared)
 
 
 def main():
