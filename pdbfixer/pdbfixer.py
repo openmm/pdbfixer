@@ -80,7 +80,7 @@ substitutions = {
     'SEL':'SER', 'SEP':'SER', 'SET':'SER', 'SHC':'CYS', 'SHR':'LYS', 'SMC':'CYS', 'SOC':'CYS', 'STY':'TYR', 'SVA':'SER', 'TIH':'ALA',
     'TPL':'TRP', 'TPO':'THR', 'TPQ':'ALA', 'TRG':'LYS', 'TRO':'TRP', 'TYB':'TYR', 'TYI':'TYR', 'TYQ':'TYR', 'TYS':'TYR', 'TYY':'TYR'
 }
-proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR', 'ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'TRP', 'VAL']
+proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR', 'PTR', 'ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'SEP', 'TRP', 'VAL']
 rnaResidues = ['A', 'G', 'C', 'U', 'I']
 dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
 
@@ -1139,7 +1139,7 @@ class PDBFixer(object):
         """Create a force field to use for optimizing the positions of newly added atoms."""
 
         if water:
-            forcefield = app.ForceField('amber14-all.xml', 'amber14/tip3p.xml')
+            forcefield = app.ForceField('amber14-all.xml', 'amber14/tip3p.xml', 'amber/phosaa14SB.xml')
             nonbonded = [f for f in forcefield._forces if isinstance(f, NonbondedGenerator)][0]
             radii = {'H':0.198, 'Li':0.203, 'C':0.340, 'N':0.325, 'O':0.299, 'F':0.312, 'Na':0.333, 'Mg':0.141,
                      'P':0.374, 'S':0.356, 'Cl':0.347, 'K':0.474, 'Br':0.396, 'Rb':0.527, 'I':0.419, 'Cs':0.605}

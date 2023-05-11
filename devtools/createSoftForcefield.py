@@ -31,13 +31,13 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 from __future__ import print_function
 __author__ = "Peter Eastman"
-__version__ = "1.0"
+__version__ = "1.1"
 
 import openmm.app as app
 import openmm.app.element as elem
 import openmm.app.forcefield as ff
 
-forcefield = app.ForceField('amber99sbildn.xml', 'tip3p.xml')
+forcefield = app.ForceField('amber/ff14SB.xml', 'tip3p.xml', 'amber/phosaa14SB.xml')
 bondK = 10000.0
 angleK = 10.0
 
@@ -51,7 +51,8 @@ print(' <AtomTypes>')
 omitTypes = set()
 omitClasses = set()
 for atomType in forcefield._atomTypes:
-    (atomClass, mass, element) = forcefield._atomTypes[atomType]
+    aType = forcefield._atomTypes[atomType]
+    (atomClass, mass, element) = aType.atomClass, aType.mass, aType.element
     if element is None or element == elem.hydrogen:
         omitTypes.add(atomType)
         omitClasses.add(atomClass)
@@ -86,8 +87,8 @@ for i in range(len(bonds.types1)):
     type1 = next(iter(bonds.types1[i]))
     type2 = next(iter(bonds.types2[i]))
     if type1 not in omitTypes and type2 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
+        class1 = forcefield._atomTypes[type1].atomClass
+        class2 = forcefield._atomTypes[type2].atomClass
         print('  <Bond class1="%s" class2="%s" length="%g" k="%g"/>' % (class1, class2, bonds.length[i], bondK))
 print(' </HarmonicBondForce>')
 
@@ -100,9 +101,9 @@ for i in range(len(angles.types1)):
     type2 = next(iter(angles.types2[i]))
     type3 = next(iter(angles.types3[i]))
     if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
-        class3 = forcefield._atomTypes[type3][0]
+        class1 = forcefield._atomTypes[type1].atomClass
+        class2 = forcefield._atomTypes[type2].atomClass
+        class3 = forcefield._atomTypes[type3].atomClass
         print('  <Angle class1="%s" class2="%s" class3="%s" angle="%g" k="%g"/>' % (class1, class2, class3, angles.angle[i], angleK))
 print(' </HarmonicAngleForce>')
 
@@ -116,10 +117,10 @@ for torsion in torsions.proper:
     type3 = next(iter(torsion.types3))
     type4= next(iter(torsion.types4))
     if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes and type4 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
-        class3 = forcefield._atomTypes[type3][0]
-        class4 = forcefield._atomTypes[type4][0]
+        class1 = forcefield._atomTypes[type1].atomClass
+        class2 = forcefield._atomTypes[type2].atomClass
+        class3 = forcefield._atomTypes[type3].atomClass
+        class4 = forcefield._atomTypes[type4].atomClass
         print('  <Proper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4), end=' ')
         for i in range(len(torsion.k)):
             print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
@@ -130,10 +131,10 @@ for torsion in torsions.improper:
     type3 = next(iter(torsion.types3))
     type4= next(iter(torsion.types4))
     if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes and type4 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
-        class3 = forcefield._atomTypes[type3][0]
-        class4 = forcefield._atomTypes[type4][0]
+        class1 = forcefield._atomTypes[type1].atomClass
+        class2 = forcefield._atomTypes[type2].atomClass
+        class3 = forcefield._atomTypes[type3].atomClass
+        class4 = forcefield._atomTypes[type4].atomClass
         print('  <Improper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4), end=' ')
         for i in range(len(torsion.k)):
             print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
