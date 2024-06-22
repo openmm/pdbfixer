@@ -1094,27 +1094,16 @@ class PDBFixer(object):
 
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
-        original_chains = list(modeller.topology.chains())
+        old_chains = list(modeller.topology.chains())
         modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, boxVectors=boxVectors, boxShape=boxShape, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
         new_chains = list(modeller.topology.chains())
-        added_chain_indices = range(len(original_chains), len(new_chains))
-        assert 1 <= len(added_chain_indices) <= 2, "Expected a new solvent chain and optionally a new ion chain"
 
-        for added_chain_index in added_chain_indices:
-            added_chain = new_chains[added_chain_index]
-            assert added_chain.id.isnumeric(), "Expected numeric chain ID assigned by modeller.addSolvent"
-
-            # If the last chain ID is a letter between A and Y, assign the next letter for the added chain ID.
-            if added_chain_index > 0:
+        # If the last chain ID is alphabetic, continue alphabetically until reaching Z
+        if len(old_chains) > 0:
+            for added_chain_index in range(len(old_chains), len(new_chains)):
                 prev_chain_id = new_chains[added_chain_index - 1].id
-                if len(prev_chain_id) == 1 and prev_chain_id.isalpha():
-                    abet_index = ord(prev_chain_id.upper()) - ord("A") + 1
-                    if abet_index < 26:
-                        # A-Z
-                        added_chain.id = chr(ord("A") + abet_index)
-                    else:
-                        # Otherwise, leave the ID as a string representing its index.
-                        pass
+                if len(prev_chain_id) == 1 and "A" <= prev_chain_id < "Z":
+                    new_chains[added_chain_index].id = chr(ord(prev_chain_id) + 1)
 
         self.topology = modeller.topology
         self.positions = modeller.positions
