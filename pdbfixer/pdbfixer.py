@@ -534,6 +534,25 @@ class PDBFixer(object):
                 templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
                 newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
 
+    def _renameNewChains(self, startIndex):
+        """Rename newly added chains to conform with existing naming conventions.
+        
+        Parameters
+        ----------
+        startIndex : int
+            The index of the first new chain in self.topology.chains().
+        """
+        # If all chains are new, nothing to do
+        if startIndex == 0:
+            return
+
+        # If the last chain ID was originally a letter, continue alphabetically until reaching Z
+        chains = list(self.topology.chains())
+        for newChainIndex in range(startIndex, len(chains)):
+            prevChainId = chains[newChainIndex - 1].id
+            if len(prevChainId) == 1 and "A" <= prevChainId < "Z":
+                chains[newChainIndex].id = chr(ord(prevChainId) + 1)
+
     def removeChains(self, chainIndices=None, chainIds=None):
         """Remove a set of chains from the structure.
 
@@ -1092,16 +1111,13 @@ class PDBFixer(object):
 
         """
 
+        nChains = sum(1 for _ in self.topology.chains())
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
         modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, boxVectors=boxVectors, boxShape=boxShape, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
-        chains = list(modeller.topology.chains())
-        if len(chains) == 1:
-            chains[0].id = 'A'
-        else:
-            chains[-1].id = chr(ord(chains[-2].id)+1)
         self.topology = modeller.topology
         self.positions = modeller.positions
+        self._renameNewChains(nChains)
 
     def addMembrane(self, lipidType='POPC', membraneCenterZ=0*unit.nanometer, minimumPadding=1*unit.nanometer, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar):
         """Add a lipid membrane to the structure.
@@ -1124,16 +1140,14 @@ class PDBFixer(object):
         ionicStrength : openmm.unit.Quantity with units compatible with molar, optional, default=0*molar
             The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
         """
+
+        nChains = sum(1 for _ in self.topology.chains())
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
         modeller.addMembrane(forcefield, lipidType=lipidType, minimumPadding=minimumPadding, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
-        chains = list(modeller.topology.chains())
-        if len(chains) == 1:
-            chains[0].id = 'A'
-        else:
-            chains[-1].id = chr(ord(chains[-2].id)+1)
         self.topology = modeller.topology
         self.positions = modeller.positions
+        self._renameNewChains(nChains)
 
     def _createForceField(self, newTopology, water):
         """Create a force field to use for optimizing the positions of newly added atoms."""
