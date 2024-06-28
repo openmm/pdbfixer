@@ -83,6 +83,10 @@ substitutions = {
 proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS', 'LEU', 'MET', 'PRO', 'THR', 'TYR', 'ARG', 'ASP', 'GLN', 'GLY', 'ILE', 'LYS', 'PHE', 'SER', 'TRP', 'VAL']
 rnaResidues = ['A', 'G', 'C', 'U', 'I']
 dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
+oneToThreeLetterMap = {
+    'R': 'ARG', 'H': 'HIS', 'K': 'LYS', 'D': 'ASP', 'E': 'GLU', 'S': 'SER', 'T': 'THR', 'N': 'ASN', 'Q': 'GLN', 'C': 'CYS', 'G': 'GLY',
+    'P': 'PRO', 'A': 'ALA', 'V': 'VAL', 'I': 'ILE', 'L': 'LEU', 'M': 'MET', 'F': 'PHE', 'Y': 'TYR', 'W': 'TRP'
+}
 
 class Sequence(object):
     """Sequence holds the sequence of a chain, as specified by SEQRES records."""
@@ -181,7 +185,7 @@ class PDBFixer(object):
     """PDBFixer implements many tools for fixing problems in PDB and PDBx/mmCIF files.
     """
 
-    def __init__(self, filename=None, pdbfile=None, pdbxfile=None, url=None, pdbid=None):
+    def __init__(self, filename=None, pdbfile=None, pdbxfile=None, url=None, pdbid=None, topology=None, positions=None, sequence=None, residues=None):
         """Create a new PDBFixer instance to fix problems in a PDB or PDBx/mmCIF file.
 
         Parameters
@@ -201,6 +205,17 @@ class PDBFixer(object):
             at the file content.
         pdbid : str, optional, default=None
             A four-letter PDB code specifying the structure to be retrieved from the RCSB.
+        topology : Topology, optional, default=None
+            An OpenMM Topology object to be fixed instead of reading a file. Does not support modified or non-standard
+            residues.
+        positions : Quantity or array-like object of dimension (n,3) with units in nanometers, optional, default=None
+            The positions of the atoms in the Topology.  This must be specified if topology is specified.
+        sequence : str, optional, default=None
+            The sequence of the protein to be fixed.  This or residues must be specified if topology is specified.
+        residues : list of str, optional, default=None
+            A list of the 3-letter codes of the residues in the protein to be fixed.  This or sequence must be specified
+            if topology is specified.
+        
 
         Notes
         -----
@@ -230,8 +245,14 @@ class PDBFixer(object):
         """
 
         # Check to make sure only one option has been specified.
-        if bool(filename) + bool(pdbfile) + bool(pdbxfile) + bool(url) + bool(pdbid) != 1:
-            raise Exception("Exactly one option [filename, pdbfile, pdbxfile, url, pdbid] must be specified.")
+        if bool(filename) + bool(pdbfile) + bool(pdbxfile) + bool(url) + bool(pdbid) + bool(topology) != 1:
+            raise Exception("Exactly one option [filename, pdbfile, pdbxfile, url, pdbid, topology] must be specified.")
+
+        # Check arguments regarding fixing an existing topology.
+        if topology is not None and sequence is None and residues is None:
+            raise Exception("If topology is specified, one of sequence or residues must also be specified.")
+        elif topology is not None and sequence is not None and residues is not None:
+                raise Exception("If topology is specified, only one of sequence or residues may be specified.")
 
         self.source = None
         if pdbid:
@@ -263,6 +284,8 @@ class PDBFixer(object):
                 self._initializeFromPDBx(contents)
             else:
                 self._initializeFromPDB(StringIO(contents))
+        elif topology is not None:
+            self._initializeFromTopology(topology, positions, sequence, residues)
 
         # Check the structure has some atoms in it.
         atoms = list(self.topology.atoms())
@@ -287,6 +310,19 @@ class PDBFixer(object):
         self.positions = pdb.positions
         self.sequences = [Sequence(s.chain_id, s.residues) for s in structure.sequences]
         self.modifiedResidues = [ModifiedResidue(r.chain_id, r.number, r.residue_name, r.standard_name) for r in structure.modified_residues]
+
+    def _initializeFromTopology(self, topology, positions, sequence=None, residues=None):
+        """Initialize this object using pre-existing topology, positions, and sequence."""
+        # sequence contains one-letter codes, residues contains three-letter codes
+        if residues is not None:
+            assert len(residues[0]) == 3, "Residues must be a list containing three-letter residue codes for the sequence."
+        else:
+            residues = [oneToThreeLetterMap[s] for s in sequence]
+
+        self.topology = topology
+        self.positions = positions
+        self.sequences = [Sequence(chainId=1, residues=residues)]
+        self.modifiedResidues = []
 
     def _initializeFromPDBx(self, file):
         """Initialize this object by reading a PDBx/mmCIF file."""
