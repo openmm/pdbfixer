@@ -1058,10 +1058,8 @@ class PDBFixer(object):
 
         Notes
         -----
-        No extensive electrostatic analysis is performed; only default residue pKas are used.
-
-        Examples
-        --------
+        No extensive electrostatic analysis is performed; only default residue pKas are used.  The pH is only
+        taken into account for standard amino acids.
 
         Examples
         --------
@@ -1070,12 +1068,103 @@ class PDBFixer(object):
 
         >>> fixer = PDBFixer(pdbid='1VII')
         >>> fixer.addMissingHydrogens(pH=8.0)
-
         """
+        extraDefinitions = self._downloadNonstandardDefinitions()
+        variants = [self._describeVariant(res, extraDefinitions) for res in self.topology.residues()]
         modeller = app.Modeller(self.topology, self.positions)
-        modeller.addHydrogens(pH=pH, forcefield=forcefield)
+        modeller.addHydrogens(pH=pH, forcefield=forcefield, variants=variants)
         self.topology = modeller.topology
         self.positions = modeller.positions
+
+    def _downloadNonstandardDefinitions(self):
+        """If the file contains any nonstandard residues, download their definitions and build
+        the information needed to add hydrogens to them.
+        """
+        app.Modeller._loadStandardHydrogenDefinitions()
+        resnames = set(residue.name for residue in self.topology.residues())
+        definitions = {}
+        for name in resnames:
+            if name not in app.Modeller._residueHydrogens:
+                # Try to download the definition.
+
+                try:
+                    file = urlopen(f'https://files.rcsb.org/ligands/download/{name}.cif')
+                    contents = file.read().decode('utf-8')
+                    file.close()
+                except:
+                    continue
+
+                # Record the atoms and bonds.
+
+                from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
+                reader = PdbxReader(StringIO(contents))
+                data = []
+                reader.read(data)
+                block = data[0]
+                atomData = block.getObj('chem_comp_atom')
+                atomNameCol = atomData.getAttributeIndex('atom_id')
+                symbolCol = atomData.getAttributeIndex('type_symbol')
+                leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
+                atoms = [(row[atomNameCol], row[symbolCol].upper(), row[leavingCol] == 'Y') for row in atomData.getRowList()]
+                bondData = block.getObj('chem_comp_bond')
+                if bondData is None:
+                    bonds = []
+                else:
+                    atom1Col = bondData.getAttributeIndex('atom_id_1')
+                    atom2Col = bondData.getAttributeIndex('atom_id_2')
+                    bonds = [(row[atom1Col], row[atom2Col]) for row in bondData.getRowList()]
+                definitions[name] = (atoms, bonds)
+        return definitions
+
+    def _describeVariant(self, residue, definitions):
+        """Build the variant description to pass to addHydrogens() for a residue."""
+        if residue.name not in definitions:
+            return None
+        atoms, bonds = definitions[residue.name]
+
+        # See if the heavy atoms are identical.
+
+        topologyHeavy = dict((atom.name, atom) for atom in residue.atoms() if atom.element is not None and atom.element != app.element.hydrogen)
+        definitionHeavy = dict((atom[0], atom) for atom in atoms if atom[1] != '' and atom[1] != 'H')
+        for name in topologyHeavy:
+            if name not in definitionHeavy or definitionHeavy[name][1] != topologyHeavy[name].element.symbol.upper():
+                # This atom isn't present in the definition
+                return None
+        for name in definitionHeavy:
+            if name not in topologyHeavy and not definitionHeavy[name][2]:
+                # This isn't a leaving atom, and it isn't present in the topology.
+                return None
+
+        # Build the list of hydrogens.
+
+        variant = []
+        definitionAtoms = dict((atom[0], atom) for atom in atoms)
+        topologyBonds = list(residue.bonds())
+        for name1, name2 in bonds:
+            if definitionAtoms[name1][1] == 'H':
+                h, parent = name1, name2
+            elif definitionAtoms[name2][1] == 'H':
+                h, parent = name2, name1
+            else:
+                continue
+            if definitionAtoms[h][2]:
+                # The hydrogen is marked as a leaving atom.  Omit it if the parent is not present,
+                # or if the parent has an external bond.
+                if parent not in topologyHeavy:
+                    continue
+                parentAtom = topologyHeavy[parent]
+                exclude = False
+                for atom1, atom2 in topologyBonds:
+                    if atom1 == parentAtom and atom2.residue != residue:
+                        exclude = True
+                        break
+                    if atom2 == parentAtom and atom1.residue != residue:
+                        exclude = True
+                        break
+                if exclude:
+                    continue
+            variant.append((h, parent))
+        return variant
 
     def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar, boxShape='cube'):
         """Add a solvent box surrounding the structure.
