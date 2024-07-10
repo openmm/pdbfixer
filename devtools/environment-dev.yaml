@@ -1,10 +1,11 @@
 name: pdbfixer-dev
 
 channels:
+  - conda-forge/label/openmm_dev
   - conda-forge
 
 dependencies:
   - pytest
-  - openmm
+  - openmm=8.1.1dev0
   - numpy
   - pip
