@@ -1,7 +1,7 @@
 name: pdbfixer-dev
 
 channels:
-  - conda-forge/label/openmm-dev
+  - conda-forge/label/openmm_dev
   - conda-forge
 
 dependencies:
