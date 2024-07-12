@@ -281,5 +281,34 @@ fixer.nonstandardResidues = [(residue, 'ALA') for residue, replacement in fixer.
 <span style="color:grey">fixer.replaceNonstandardResidues()</span>
 </pre></tt>
 
+<h3>Nonstandard Residues</h3>
+
+PDBFixer knows how to build all the standard amino acids and nucleotides.  If you want to apply it to other residues, you need to tell it how.  This is done by defining templates.
+
+A template is a description of a residue: what atoms it contains, how they are bonded to each other, and what conformation they take on.  For residues defined in the PDB Chemical Component Dictionary, you can simply tell PDBFixer to download the definition of whatever residue you need.  For example, if you want to model a protein containing a selenocysteine (PDB code SEC), call
+
+<tt><pre>
+fixer.downloadTemplate('SEC')
+</pre></tt>
+
+Now you can call other methods such as <tt>findMissingAtoms()</tt>, <tt>addMissingAtoms()</tt>, and <tt>addMissingHydrogens()</tt> in the usual way.  PDBFixer will fix problems in the SEC residue exactly as it does for standard ones.
+<p/>
+If your structure contains molecules or residues that are not present in the PDB Chemical Component Dictionary, you can still add templates for them, but you need to define them yourself.  This is done by calling <tt>registerTemplate()</tt>.  It takes two required arguments: an OpenMM Topology object describing the structure of the residue, and a list of positions describing a typical conformation of the residue.  These can be easily obtained from, for example, a PDB or PDBx/mmCIF file containing just the single residue.
+
+<tt><pre>
+pdbx = PDBxFile('MOL.cif')
+fixer.registerTemplate(pdbx.topology, pdbx.positions)
+</pre></tt>
+
+For residues that appear as part of larger molecules rather than in isolation, you need to provide one more piece of information: which atoms should only be present in terminal residues.  For example, a C-terminal amino acid is capped with OXT and HXT atoms, but these atoms are omitted when the residue appears in the middle of a chain and is bonded to another residue.  Likewise, the nitrogen in an N-terminal amino acid has two hydrogens attached to it (H and H2), but when it appears in the middle of a chain and the nitrogen is bonded to another residue, the H2 hydrogen is omitted.  You can pass a third argument containing a list of boolean flags for each atom, specifying which ones should be omitted from non-terminal residues.
+
+<tt><pre>
+pdbx = PDBxFile('RES.cif')
+terminal = [atom.name in ('H2', 'OXT', 'HXT') for atom in pdbx.topology.atoms()]
+fixer.registerTemplate(pdbx.topology, pdbx.positions, terminal)
+</pre></tt>
+
+Strictly speaking, it is the bonds that matter, not the position in the chain.  For example, the sulfur in a CYS residue has a hydrogen that must be omitted when it forms a disulfide bond to another residue.  What matters is whether the sulfur has a bond connecting it to another residue, not the position of the CYS residue in its chain.
+
 </body>
 </html>
