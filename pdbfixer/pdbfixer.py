@@ -963,12 +963,23 @@ class PDBFixer(object):
         missingAtoms = {}
         missingTerminals = {}
 
-        # Record which other atoms each atom is bonded to.
+        # Determine which atoms have an external bond to another residue.
 
-        bondedTo = defaultdict(set)
+        hasExternal = defaultdict(bool)
         for atom1, atom2 in self.topology.bonds():
-            bondedTo[atom1.name].add(atom2)
-            bondedTo[atom2.name].add(atom1)
+            if atom1.residue != atom2.residue:
+                hasExternal[(atom1.residue, atom1.name)] = True
+                hasExternal[(atom2.residue, atom2.name)] = True
+        for chain in self.topology.chains():
+            chainResidues = list(chain.residues())
+            for residue in chain.residues():
+                atomNames = [atom.name for atom in residue.atoms()]
+                if all(name in atomNames for name in ['C', 'O', 'CA']):
+                    # We'll be adding peptide bonds.
+                    if residue != chainResidues[0]:
+                        hasExternal[(residue, 'N')] = True
+                    if residue != chainResidues[-1]:
+                        hasExternal[(residue, 'C')] = True
 
         # Loop over residues.
 
@@ -981,23 +992,23 @@ class PDBFixer(object):
                     # If an atom is marked as terminal only, and if it is bonded to any atom that has an external bond
                     # to another residue, we need to omit that atom and any other terminal-only atom bonded to it.
 
+                    bondedTo = defaultdict(set)
+                    for atom1, atom2 in template.topology.bonds():
+                        bondedTo[atom1].add(atom2)
+                        bondedTo[atom2].add(atom1)
                     skip = set()
-                    hasExternal = set()
-                    for atom in residue.atoms():
-                        if any(a.residue != residue for a in bondedTo[atom.name]):
-                            hasExternal.add(atom.name)
                     for atom, terminal in zip(template.topology.atoms(), template.terminal):
                         if terminal:
-                            for atom2 in bondedTo[atom.name]:
-                                if atom2.name in hasExternal:
-                                    skip.add(atom.name)
+                            for atom2 in bondedTo[atom]:
+                                if hasExternal[(residue, atom2.name)]:
+                                    skip.add(atom)
                     for atom, terminal in zip(template.topology.atoms(), template.terminal):
                         if terminal:
-                            for atom2 in bondedTo[atom.name]:
-                                if atom2.name in skip:
-                                    skip.add(atom.name)
+                            for atom2 in bondedTo[atom]:
+                                if atom2 in skip:
+                                    skip.add(atom)
                     atomNames = set(atom.name for atom in residue.atoms())
-                    templateAtoms = [atom for atom in template.topology.atoms() if atom.name not in skip]
+                    templateAtoms = [atom for atom in template.topology.atoms() if atom not in skip]
                     if nucleic and residue == chainResidues[0] and (chain.index, 0) not in self.missingResidues:
                         templateAtoms = [atom for atom in templateAtoms if atom.name not in ('P', 'OP1', 'OP2')]
 
