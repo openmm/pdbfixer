@@ -472,7 +472,7 @@ class PDBFixer(object):
         newAtoms = []
         existingAtomMap = {}
         addedAtomMap = {}
-        addedOXT = []
+        addedHeterogenBonds = []
         residueCenters = [self._computeResidueCenter(res).value_in_unit(unit.nanometers) for res in self.topology.residues()]*unit.nanometers
         for chain in self.topology.chains():
             if omitUnknownMolecules and all(self._getTemplate(residue.name) is None for residue in chain.residues()):
@@ -535,6 +535,18 @@ class PDBFixer(object):
                         addedAtomMap[residue][atom] = newAtom
                         templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
                         newPositions.append((mm.Vec3(*np.dot(rotate, templatePosition+translate2))+translate1)*unit.nanometer)
+
+                    if residue.name not in app.Topology._standardBonds:
+
+                        # This is a heterogen.  Make sure bonds will get added for any new atoms.
+
+                        addedAtomNames = set(atom.name for atom in addedAtomMap[residue])
+                        newResidueAtoms = {atom.name: atom for atom in newResidue.atoms()}
+                        for atom1, atom2 in template.topology.bonds():
+                            if atom1.name in addedAtomNames or atom2.name in addedAtomNames:
+                                if atom1.name in newResidueAtoms and atom2.name in newResidueAtoms:
+                                    addedHeterogenBonds.append((newResidueAtoms[atom1.name], newResidueAtoms[atom2.name]))
+
                 if residue in self.missingTerminals:
                     terminalsToAdd = self.missingTerminals[residue]
                 else:
@@ -566,7 +578,6 @@ class PDBFixer(object):
                     if 'OXT' in terminalsToAdd:
                         newAtom = newTopology.addAtom('OXT', oxygen, newResidue)
                         newAtoms.append(newAtom)
-                        addedOXT.append(newAtom)
                         d_ca_o = atomPositions['O']-atomPositions['CA']
                         d_ca_c = atomPositions['C']-atomPositions['CA']
                         d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
@@ -576,11 +587,19 @@ class PDBFixer(object):
         newTopology.createStandardBonds()
         newTopology.createDisulfideBonds(newPositions)
 
-        # Add the bonds between atoms in heterogens.
+        # Add the existing bonds between atoms in heterogens.
 
         for a1,a2 in self.topology.bonds():
             if a1 in existingAtomMap and a2 in existingAtomMap and (a1.residue.name not in app.Topology._standardBonds or a2.residue.name not in app.Topology._standardBonds):
                 newTopology.addBond(existingAtomMap[a1], existingAtomMap[a2])
+
+        # Add any new bonds within heterogens.
+
+        bonds = set((atom1.index, atom2.index) for atom1, atom2 in newTopology.bonds())
+        for atom1, atom2 in addedHeterogenBonds:
+            if (atom1.index, atom2.index) not in bonds and (atom2.index, atom1.index) not in bonds:
+                newTopology.addBond(atom1, atom2)
+                bonds.add((atom1.index, atom2.index))
 
         # Return the results.
 

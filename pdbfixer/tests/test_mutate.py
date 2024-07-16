@@ -90,3 +90,11 @@ def test_download_template():
         atoms = list(residues[i].atoms())
         assert sum(1 for a in atoms if a.element == app.element.phosphorus) == 1
         assert sum(1 for a in atoms if a.name == 'OXT') == (1 if i == 134 else 0)
+
+    # Check a few bonds to make sure the mutated residue has the ones it's supposed to.
+
+    bonds = list(residues[3].bonds())
+    assert sum(1 for a1, a2 in bonds if {a1.name, a2.name} == {'N', 'CA'}) == 1
+    assert sum(1 for a1, a2 in bonds if {a1.name, a2.name} == {'CB', 'OG'}) == 1
+    assert sum(1 for a1, a2 in bonds if {a1.name, a2.name} == {'P', 'OG'}) == 1
+    assert sum(1 for a1, a2 in bonds if {a1.name, a2.name} == {'P', 'O2P'}) == 1
