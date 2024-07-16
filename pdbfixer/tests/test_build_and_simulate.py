@@ -1,7 +1,7 @@
 
 from __future__ import print_function
-import pdbfixer
-import openmm
+from pdbfixer.pdbfixer import PDBFixer
+from openmm import app
 
 import os
 import os.path
@@ -97,7 +97,7 @@ def test_build_and_simulate():
         ]
 
     # DEBUG: A few small test cases.
-    pdbcodes_to_build = ['110D', '116D', '117D', '118D', '134D', '135D', '136D', '138D', '143D', '148D', '151D', '152D', '159D', '177D', '17RA', '183D', '184D', '186D', '187D', '188D', '189D', '1A11', '1A13', '1A1P', '1A3P', '1A51', '1A60', '1A83', '1A9L', '1AAF', '1AB1', '1ABZ', '1AC7', '1ACW', '1AD7', '1ADX', '1AFP', '1AFT', '1AFX', '1AG7', '1AGG', '1AGL', '1AGT', '1AHL', '1AIE', '1AJ1', '1AJF', '1AJJ', '1AJU', '1AKG', '1AKX', '1AL1', '1ALE', '1ALF', '1ALG', '1AM0', '1AMB', '1AMC', '1AML', '1ANP', '1ANR', '1ANS', '1AOO']
+    pdbcodes_to_build = ['110D', '116D', '117D', '118D', '134D', '135D', '136D', '138D', '143D', '148D', '151D', '152D', '177D', '17RA', '183D', '184D', '186D', '187D', '188D', '189D', '1A11', '1A13', '1A1P', '1A3P', '1A51', '1A60', '1A83', '1A9L', '1AAF', '1AB1', '1ABZ', '1AC7', '1ACW', '1AD7', '1ADX', '1AFP', '1AFT', '1AFX', '1AG7', '1AGG', '1AGL', '1AGT', '1AHL', '1AIE', '1AJ1', '1AJF', '1AJJ', '1AKG', '1AL1', '1ALE', '1ALF', '1ALG', '1AM0', '1AMB', '1AMC', '1AML', '1ANP', '1ANR', '1ANS', '1AOO', '1BH7', '1BX8', '1CEK']
 
     # Don't simulate any.
     pdbcodes_to_simulate = []
@@ -105,20 +105,12 @@ def test_build_and_simulate():
     # Keep track of list of failures.
     failures = list()
         
+    forcefield = app.ForceField('amber14-all.xml', 'amber14/tip3pfb.xml')
     for pdbcode in pdbcodes_to_build:
         print("------------------------------------------------")
         print(pdbcode)
 
-        output_pdb_filename = 'output.pdb'
-
-        # PDB setup parameters.
-        # TODO: Try several combinations?
-        from openmm import unit
         pH = 7.0
-        ionic = 50.0 * unit.millimolar
-        box = 10.0 * unit.angstrom
-        positiveIon = 'Na+'
-        negativeIon = 'Cl-'
 
         outfile = tempfile.NamedTemporaryFile(mode='w', delete=False)
         output_pdb_filename = outfile.name
@@ -126,11 +118,17 @@ def test_build_and_simulate():
         timeout_seconds = 30
         watchdog = Watchdog(timeout_seconds)
         build_successful = False
-        try:        
-            from pdbfixer.pdbfixer import PDBFixer
-            from openmm import app
+        try:
             stage = "Creating PDBFixer..."
             fixer = PDBFixer(pdbid=pdbcode)
+            stage = "Deleting hydrogens..."
+            if pdbcode in ['135D', '136D', '177D', '1A83', '1AGG', '1AJ1']:
+                # These input files include extra hydrogens that aren't supported by the force field.
+                # To avoid problems, delete all pre-existing hydrogens.
+                modeller = app.Modeller(fixer.topology, fixer.positions)
+                modeller.delete([a for a in fixer.topology.atoms() if a.element == app.element.hydrogen])
+                fixer.topology = modeller.topology
+                fixer.positions = modeller.positions
             stage = "Finding missing residues..."
             fixer.findMissingResidues()
             stage = "Finding nonstandard residues..."
@@ -147,6 +145,8 @@ def test_build_and_simulate():
             fixer.addMissingHydrogens(pH)
             stage = "Writing PDB file..."
             app.PDBFile.writeFile(fixer.topology, fixer.positions, outfile)
+            stage = "Create System..."
+            forcefield.createSystem(fixer.topology)
             stage = "Done."
             outfile.close()
             build_successful = True
