@@ -445,48 +445,6 @@ class PDBFixer(object):
         self.registerTemplate(topology, positions, terminal)
         return True
 
-    def getAllFormalCharges(self, skipResidueNames=[]):
-        """
-        Download formal charges from the CCD for atoms from nonstandard residues.
-
-        Returns a list of the formal charges of all atoms in the topology. Atoms
-        whose formal charge could not be assigned are given a charge of ``None``.
-
-        Parameters
-        ----------
-        skipResidueNames : list of strings
-            A list of residue names to skip when assigning formal charges. Any
-            residues not included in this list will cause the entire method to
-            fail if they attempt to assign a charge to an atom that is missing
-            from the corresponding template.
-        """
-        formalCharges = [None] * (self.topology.getNumAtoms())
-
-        formalChargesByResidue = {}
-
-        for residue in self.topology.residues():
-            if residue.name in skipResidueNames:
-                continue
-
-            formalChargesByAtomName = formalChargesByResidue.setdefault(residue.name, {})
-
-            if not formalChargesByAtomName:
-                formalChargesByAtomName.update(self._downloadFormalCharges(residue.name))
-
-            for atom in residue.atoms():
-                try:
-                    formalCharge = formalChargesByAtomName[atom.name.upper()]
-                except IndexError:
-                    raise ValueError(
-                        f"Atom {atom.name} in residue {residue.name}#{residue.id} is missing from"
-                        + f" the CCD, so formal charges cannot be assigned. To assign formal"
-                        + f" charges to other residues, include {residue.name} in the list passed"
-                        + f" to the skipResidueNames argument."
-                    )
-                formalCharges[atom.index] = formalCharge
-        return formalCharges
-
-
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
         """Create a new Topology in which missing atoms have been added.
 
@@ -1455,7 +1413,7 @@ class PDBFixer(object):
         self.positions = modeller.positions
         self._renameNewChains(nChains)
 
-    def _downloadFormalCharges(self, resName):
+    def downloadFormalCharges(self, resName):
         """
         Download the formal charges for a residue name from the CCD
 
@@ -1525,7 +1483,7 @@ class PDBFixer(object):
             template = app.ForceField._TemplateData(resName)
             forcefield._templates[resName] = template
             indexInResidue = {}
-            formalCharges = self._downloadFormalCharges(residue.name)
+            formalCharges = self.downloadFormalCharges(residue.name)
             for atom in residue.atoms():
                 element = atom.element
                 formalCharge = formalCharges.get(atom.name, 0)
