@@ -29,6 +29,8 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 from __future__ import absolute_import
+from dataclasses import dataclass
+from typing import Literal
 __author__ = "Peter Eastman"
 __version__ = "1.7"
 
@@ -107,6 +109,76 @@ class Template:
         if terminal is None:
             terminal = [False]*topology.getNumAtoms()
         self.terminal = terminal
+
+@dataclass
+class CCDAtomDefinition:
+    atomName: str
+    symbol: str
+    leaving: bool
+    coords: mm.Vec3
+    charge: int
+    aromatic: bool
+
+@dataclass
+class CCDBondDefinition:
+    atom1: str
+    atom2: str
+    order: Literal['SING', 'DOUB', 'TRIP', 'QUAD', 'AROM', 'DELO', 'PI', 'POLY']
+    aromatic: bool
+
+@dataclass
+class CCDResidueDefinition:
+    residueName: str
+    atoms: list[CCDAtomDefinition]
+    bonds: list[CCDBondDefinition]
+
+    @classmethod
+    def fromReader(cls, reader: PdbxReader) -> 'CCDResidueDefinition':
+        data = []
+        reader.read(data)
+        block = data[0]
+
+        residueName = block.getObj('chem_comp.id')
+
+        atomData = block.getObj('chem_comp_atom')
+        atomNameCol = atomData.getAttributeIndex('atom_id')
+        symbolCol = atomData.getAttributeIndex('type_symbol')
+        leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
+        xCol = atomData.getAttributeIndex('pdbx_model_Cartn_x_ideal')
+        yCol = atomData.getAttributeIndex('pdbx_model_Cartn_y_ideal')
+        zCol = atomData.getAttributeIndex('pdbx_model_Cartn_z_ideal')
+        chargeCol = atomData.getAttributeIndex('charge')
+        aromaticCol = atomData.getAttributeIndex('pdbx_aromatic_flag')
+
+        atoms = [
+            CCDAtomDefinition(
+                atomName=row[atomNameCol],
+                symbol=row[symbolCol],
+                leaving=row[leavingCol] == 'Y',
+                coords=mm.vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1,
+                charge=row[chargeCol],
+                aromatic=row[aromaticCol] == 'Y'
+            ) for row in atomData.getRowList()
+        ]
+
+        bondData = block.getObj('chem_comp_bond')
+        if bondData is not None:
+            atom1Col = bondData.getAttributeIndex('atom_id_1')
+            atom2Col = bondData.getAttributeIndex('atom_id_2')
+            orderCol = bondData.getAttributeIndex('value_order')
+            aromaticCol = bondData.getAttributeIndex('pdbx_aromatic_flag')
+            bonds = [
+                CCDBondDefinition(
+                    atom1=row[atom1Col],
+                    atom2=row[atom2Col],
+                    order=row[orderCol],
+                    aromatic=row[aromaticCol] == 'Y',
+                ) for row in atomData.getRowList()
+            ]
+        else:
+            bonds = []
+
+        return cls(residueName=residueName, atoms=atoms, bonds=bonds)
 
 def _guessFileFormat(file, filename):
     """Guess whether a file is PDB or PDBx/mmCIF based on its filename and contents."""
@@ -279,6 +351,9 @@ class PDBFixer(object):
         if len(atoms) == 0:
             raise Exception("Structure contains no atoms.")
 
+        # Keep a cache of downloaded CCD definitions
+        self._ccdCache = {}
+
         # Load the templates.
 
         self.templates = {}
@@ -354,6 +429,36 @@ class PDBFixer(object):
                 for row in modData.getRowList():
                     self.modifiedResidues.append(ModifiedResidue(row[asymIdCol], int(row[resNumCol]), row[resNameCol], row[standardResCol]))
 
+
+    def _downloadCCDDefinition(self, name):
+        """Attempt to download a residue definition from the PDB and register a template for it.
+
+        Parameters
+        ----------
+        name: str
+            The name of the residue, as specified in the PDB Chemical Component Dictionary.
+
+        Returns
+        -------
+        True if a template was successfully registered, false otherwise.
+        """
+        name = name.upper()
+
+        if name in self._ccdCache:
+            return self._ccdCache[name]
+
+        try:
+            file = urlopen(f'https://files.rcsb.org/ligands/download/{name}.cif')
+            contents = file.read().decode('utf-8')
+            file.close()
+        except:
+            return False
+
+        reader = PdbxReader(StringIO(contents))
+        ccdDefinition = CCDResidueDefinition.fromReader(reader)
+        self._ccdCache[name] = ccdDefinition
+        return ccdDefinition
+
     def _getTemplate(self, name):
         """Return the template with a name.  If none has been registered, this will return None."""
         if name in self.templates:
@@ -398,50 +503,30 @@ class PDBFixer(object):
         True if a template was successfully registered, false otherwise.
         """
         name = name.upper()
-        try:
-            file = urlopen(f'https://files.rcsb.org/ligands/download/{name}.cif')
-            contents = file.read().decode('utf-8')
-            file.close()
-        except:
+
+        ccdDefinition = self._downloadCCDDefinition(name)
+        if ccdDefinition == False:
             return False
 
         # Load the atoms.
-
-        from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
-        reader = PdbxReader(StringIO(contents))
-        data = []
-        reader.read(data)
-        block = data[0]
-        atomData = block.getObj('chem_comp_atom')
-        atomNameCol = atomData.getAttributeIndex('atom_id')
-        symbolCol = atomData.getAttributeIndex('type_symbol')
-        leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
-        xCol = atomData.getAttributeIndex('pdbx_model_Cartn_x_ideal')
-        yCol = atomData.getAttributeIndex('pdbx_model_Cartn_y_ideal')
-        zCol = atomData.getAttributeIndex('pdbx_model_Cartn_z_ideal')
-        zCol = atomData.getAttributeIndex('pdbx_model_Cartn_z_ideal')
         topology = app.Topology()
         chain = topology.addChain()
         residue = topology.addResidue(name, chain)
         positions = []
         atomByName = {}
         terminal = []
-        for row in atomData.getRowList():
-            atomName = row[atomNameCol]
-            atom = topology.addAtom(atomName, app.Element.getBySymbol(row[symbolCol]), residue)
+        for atomDefinition in ccdDefinition.atoms:
+            atomName = atomDefinition.atomName
+            atom = topology.addAtom(atomName, app.Element.getBySymbol(atomDefinition.symbol), residue)
             atomByName[atomName] = atom
-            terminal.append(row[leavingCol] == 'Y')
-            positions.append(mm.Vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1)
+            terminal.append(atomDefinition.leaving)
+            positions.append(atomDefinition.coords)
         positions = positions*unit.nanometers
 
         # Load the bonds.
+        for bondDefinition in ccdDefinition.bonds:
+            topology.addBond(atomByName[bondDefinition.atom1], atomByName[bondDefinition.atom2])
 
-        bondData = block.getObj('chem_comp_bond')
-        if bondData is not None:
-            atom1Col = bondData.getAttributeIndex('atom_id_1')
-            atom2Col = bondData.getAttributeIndex('atom_id_2')
-            for row in bondData.getRowList():
-                topology.addBond(atomByName[row[atom1Col]], atomByName[row[atom2Col]])
         self.registerTemplate(topology, positions, terminal)
         return True
 
@@ -1248,33 +1333,13 @@ class PDBFixer(object):
         for name in resnames:
             if name not in app.Modeller._residueHydrogens:
                 # Try to download the definition.
-
-                try:
-                    file = urlopen(f'https://files.rcsb.org/ligands/download/{name}.cif')
-                    contents = file.read().decode('utf-8')
-                    file.close()
-                except:
-                    continue
+                ccdDefinition = self._downloadCCDDefinition(name)
+                if ccdDefinition == False:
+                    return False
 
                 # Record the atoms and bonds.
-
-                from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
-                reader = PdbxReader(StringIO(contents))
-                data = []
-                reader.read(data)
-                block = data[0]
-                atomData = block.getObj('chem_comp_atom')
-                atomNameCol = atomData.getAttributeIndex('atom_id')
-                symbolCol = atomData.getAttributeIndex('type_symbol')
-                leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
-                atoms = [(row[atomNameCol], row[symbolCol].upper(), row[leavingCol] == 'Y') for row in atomData.getRowList()]
-                bondData = block.getObj('chem_comp_bond')
-                if bondData is None:
-                    bonds = []
-                else:
-                    atom1Col = bondData.getAttributeIndex('atom_id_1')
-                    atom2Col = bondData.getAttributeIndex('atom_id_2')
-                    bonds = [(row[atom1Col], row[atom2Col]) for row in bondData.getRowList()]
+                atoms = [(atom.atomName, atom.symbol.upper(), atom.leaving) for atom in ccdDefinition.atoms]
+                bonds = [(bond.atom1, bond.atom2) for bond in ccdDefinition.bonds]
                 definitions[name] = (atoms, bonds)
         return definitions
 
@@ -1423,29 +1488,12 @@ class PDBFixer(object):
             Dictionary mapping from atom names (``str``) to formal charges (``int``)
         """
         # Try to download the definition.
-
-        try:
-            file = urlopen(f'https://files.rcsb.org/ligands/download/{resName}.cif')
-            contents = file.read().decode('utf-8')
-            file.close()
-        except:
+        ccdDefinition = self._downloadCCDDefinition(resName.upper())
+        if ccdDefinition == False:
             return {}
 
         # Record the formal charges.
-
-        from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
-        reader = PdbxReader(StringIO(contents))
-        data = []
-        reader.read(data)
-        block = data[0]
-        atomData = block.getObj('chem_comp_atom')
-        atomNameCol = atomData.getAttributeIndex('atom_id')
-        formalChargeCol = atomData.getAttributeIndex('charge')
-        formalCharges = {}
-        for row in atomData.getRowList():
-            atomName = row[atomNameCol]
-            formalCharges[atomName] = row[formalChargeCol]
-        return formalCharges
+        return {atom.atomName: atom.charge for atom in ccdDefinition}
 
     def _createForceField(self, newTopology, water):
         """Create a force field to use for optimizing the positions of newly added atoms."""
