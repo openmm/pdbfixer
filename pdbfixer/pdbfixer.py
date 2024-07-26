@@ -490,12 +490,12 @@ class PDBFixer(object):
             if template is None or template.formalCharges is None:
                 continue
             formalChargesByAtomName = {
-                atom.name: formalCharge
+                atom.name.upper(): formalCharge
                 for atom, formalCharge in zip(template.topology.atoms(), template.formalCharges)
             }
             for atom in residue.atoms():
                 try:
-                    formalCharge = formalChargesByAtomName[atom.name]
+                    formalCharge = formalChargesByAtomName[atom.name.upper()]
                 except IndexError:
                     raise ValueError(
                         f"Atom {atom.name} in residue {residue.name}#{residue.id} is missing from"
