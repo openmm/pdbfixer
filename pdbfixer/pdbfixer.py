@@ -1436,6 +1436,7 @@ class PDBFixer(object):
 
         """
 
+        self.downloadCharges()
         nChains = sum(1 for _ in self.topology.chains())
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
