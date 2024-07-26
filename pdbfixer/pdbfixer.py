@@ -138,6 +138,7 @@ class CCDResidueDefinition:
         reader.read(data)
         block = data[0]
 
+        # TODO: Fix
         residueName = block.getObj('chem_comp.id')
 
         atomData = block.getObj('chem_comp_atom')
@@ -155,7 +156,7 @@ class CCDResidueDefinition:
                 atomName=row[atomNameCol],
                 symbol=row[symbolCol],
                 leaving=row[leavingCol] == 'Y',
-                coords=mm.vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1,
+                coords=mm.Vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1,
                 charge=row[chargeCol],
                 aromatic=row[aromaticCol] == 'Y'
             ) for row in atomData.getRowList()
@@ -173,7 +174,7 @@ class CCDResidueDefinition:
                     atom2=row[atom2Col],
                     order=row[orderCol],
                     aromatic=row[aromaticCol] == 'Y',
-                ) for row in atomData.getRowList()
+                ) for row in bondData.getRowList()
             ]
         else:
             bonds = []
@@ -1493,7 +1494,7 @@ class PDBFixer(object):
             return {}
 
         # Record the formal charges.
-        return {atom.atomName: atom.charge for atom in ccdDefinition}
+        return {atom.atomName: atom.charge for atom in ccdDefinition.atoms}
 
     def _createForceField(self, newTopology, water):
         """Create a force field to use for optimizing the positions of newly added atoms."""
