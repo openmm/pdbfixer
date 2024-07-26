@@ -101,12 +101,13 @@ class ModifiedResidue(object):
 
 class Template:
     """Template represents a standard residue, or a nonstandard one registered with registerTemplate()."""
-    def __init__(self, topology, positions, terminal=None):
+    def __init__(self, topology, positions, terminal=None, formalCharges=None):
         self.topology = topology
         self.positions = positions
         if terminal is None:
             terminal = [False]*topology.getNumAtoms()
         self.terminal = terminal
+        self.formalCharges = formalCharges
 
 def _guessFileFormat(file, filename):
     """Guess whether a file is PDB or PDBx/mmCIF based on its filename and contents."""
@@ -279,6 +280,9 @@ class PDBFixer(object):
         if len(atoms) == 0:
             raise Exception("Structure contains no atoms.")
 
+        # Initialise the list of formal charges
+        self.formalCharges = [None] * len(atoms)
+
         # Load the templates.
 
         self.templates = {}
@@ -354,13 +358,15 @@ class PDBFixer(object):
                 for row in modData.getRowList():
                     self.modifiedResidues.append(ModifiedResidue(row[asymIdCol], int(row[resNumCol]), row[resNameCol], row[standardResCol]))
 
-    def _getTemplate(self, name):
+    def _getTemplate(self, name, downloadIfMissing=False):
         """Return the template with a name.  If none has been registered, this will return None."""
         if name in self.templates:
             return self.templates[name]
+        if downloadIfMissing and self.downloadTemplate(name):
+            return self.templates[name]
         return None
 
-    def registerTemplate(self, topology, positions, terminal=None):
+    def registerTemplate(self, topology, positions, terminal=None, formalCharges=None):
         """Register a template for a nonstandard residue.  This allows PDBFixer to add missing residues of this type,
         to add missing atoms to existing residues, and to mutate other residues to it.
         Parameters
@@ -375,6 +381,9 @@ class PDBFixer(object):
             If this is present, it should be a list of length equal to the number of atoms in the residue.
             If an element is True, that indicates the corresponding atom should only be added to terminal
             residues.
+        formalCharges: optional list of int
+            If this is present, it should be a list of length equal to the number of atoms in the residue.
+            Each element indicates the formal charge of the corresponding atom.
         """
         residues = list(topology.residues())
         if len(residues) != 1:
@@ -383,7 +392,9 @@ class PDBFixer(object):
             raise ValueError('The number of positions does not match the number of atoms in the Topology')
         if terminal is not None and len(terminal) != topology.getNumAtoms():
             raise ValueError('The number of terminal flags does not match the number of atoms in the Topology')
-        self.templates[residues[0].name] = Template(topology, positions, terminal)
+        if formalCharges is not None and len(formalCharges) != topology.getNumAtoms():
+            raise ValueError('The number of formal charges does not match the number of atoms in the Topology')
+        self.templates[residues[0].name] = Template(topology, positions, terminal, formalCharges)
 
     def downloadTemplate(self, name):
         """Attempt to download a residue definition from the PDB and register a template for it.
@@ -419,18 +430,22 @@ class PDBFixer(object):
         xCol = atomData.getAttributeIndex('pdbx_model_Cartn_x_ideal')
         yCol = atomData.getAttributeIndex('pdbx_model_Cartn_y_ideal')
         zCol = atomData.getAttributeIndex('pdbx_model_Cartn_z_ideal')
+        zCol = atomData.getAttributeIndex('pdbx_model_Cartn_z_ideal')
+        formalChargeCol = atomData.getAttributeIndex('charge')
         topology = app.Topology()
         chain = topology.addChain()
         residue = topology.addResidue(name, chain)
         positions = []
         atomByName = {}
         terminal = []
+        formalCharges = []
         for row in atomData.getRowList():
             atomName = row[atomNameCol]
             atom = topology.addAtom(atomName, app.Element.getBySymbol(row[symbolCol]), residue)
             atomByName[atomName] = atom
             terminal.append(row[leavingCol] == 'Y')
             positions.append(mm.Vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1)
+            formalCharges.append(row[formalChargeCol])
         positions = positions*unit.nanometers
 
         # Load the bonds.
@@ -441,8 +456,55 @@ class PDBFixer(object):
             atom2Col = bondData.getAttributeIndex('atom_id_2')
             for row in bondData.getRowList():
                 topology.addBond(atomByName[row[atom1Col]], atomByName[row[atom2Col]])
-        self.registerTemplate(topology, positions, terminal)
+        self.registerTemplate(topology, positions, terminal, formalCharges)
         return True
+
+    def _getFormalCharge(self, index, default=None):
+        if index < len(self.formalCharges):
+            formalCharge = self.formalCharges[index]
+            return default if formalCharge is None else formalCharge
+        return default
+
+    def downloadCharges(self, skipResidueNames=[]):
+        """
+        Download and assign formal charges for nonstandard residues from the CCD.
+
+        Formal charges are used to neutralise systems during solvation. Residues whose templates are
+        included in PDBFixer (canonical amino acids, caps, nucleotides, and ribonucleotides) are not
+        assigned charges as they may be titrated away from their canonical protonation states, and
+        these formal charges are computed separately during solvation.
+
+        Parameters
+        ----------
+        skipResidueNames : list of strings
+            A list of residue names to skip when assigning formal charges. Any residues not included
+            in this list will cause the entire method to fail if they attempt to assign a charge to
+            an atom that is missing from the corresponding template.
+        """
+        formalCharges = list(self.formalCharges[:self.topology.getNumAtoms()])
+        formalCharges += [None] * (self.topology.getNumAtoms() - len(formalCharges))
+        for residue in self.topology.residues():
+            if residue.name in skipResidueNames:
+                continue
+            template = self._getTemplate(residue.name, downloadIfMissing=True)
+            if template is None or template.formalCharges is None:
+                continue
+            formalChargesByAtomName = {
+                atom.name: formalCharge
+                for atom, formalCharge in zip(template.topology.atoms(), template.formalCharges)
+            }
+            for atom in residue.atoms():
+                try:
+                    formalCharge = formalChargesByAtomName[atom.name]
+                except IndexError:
+                    raise ValueError(
+                        f"Atom {atom.name} in residue {residue.name}#{residue.id} is missing from"
+                        + f" the template. To assign formal charges to other residues, include"
+                        + f" {residue.name} in the list passed to the skipResidueNames argument."
+                    )
+                formalCharges[atom.index] = formalCharge
+        self.formalCharges = formalCharges
+
 
     def _addAtomsToTopology(self, heavyAtomsOnly, omitUnknownMolecules):
         """Create a new Topology in which missing atoms have been added.
