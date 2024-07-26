@@ -46,7 +46,6 @@ def test_charge_and_solvate(pdbCode, soluteCharge):
     fixer.addMissingAtoms()
 
     fixer.addMissingHydrogens(pH=7.4)
-    fixer.downloadCharges()
     fixer.addSolvent(
         padding=2.0 * openmm.unit.nanometer,
         ionicStrength=0.1 * openmm.unit.molar,
