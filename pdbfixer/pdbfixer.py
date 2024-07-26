@@ -1512,10 +1512,11 @@ class PDBFixer(object):
             indexInResidue = {}
             for atom in residue.atoms():
                 element = atom.element
-                typeName = 'extra_'+element.symbol
-                if element not in atomTypes:
-                    atomTypes[element] = app.ForceField._AtomType(typeName, '', 0.0, element)
-                    forcefield._atomTypes[typeName] = atomTypes[element]
+                formalCharge = self._getFormalCharge(atom.index, 0)
+                typeName = 'extra_'+element.symbol+'_'+str(formalCharge)
+                if (element, formalCharge) not in atomTypes:
+                    atomTypes[(element, formalCharge)] = app.ForceField._AtomType(typeName, '', 0.0, element)
+                    forcefield._atomTypes[typeName] = atomTypes[(element, formalCharge)]
                     if water:
                         # Select a reasonable vdW radius for this atom type.
 
@@ -1523,7 +1524,12 @@ class PDBFixer(object):
                             sigma = radii[element.symbol]
                         else:
                             sigma = 0.5
-                        nonbonded.registerAtom({'type':typeName, 'charge':'0', 'sigma':str(sigma), 'epsilon':'0'})
+                        nonbonded.registerAtom({
+                            'type':typeName,
+                            'charge':str(formalCharge),
+                            'sigma':str(sigma),
+                            'epsilon':'0'
+                        })
                 indexInResidue[atom.index] = len(template.atoms)
                 template.atoms.append(app.ForceField._TemplateAtomData(atom.name, typeName, element))
             for atom in residue.atoms():
