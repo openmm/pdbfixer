@@ -30,7 +30,7 @@ USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 from __future__ import absolute_import
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Optional
 __author__ = "Peter Eastman"
 __version__ = "1.7"
 
@@ -129,6 +129,7 @@ class CCDBondDefinition:
 @dataclass
 class CCDResidueDefinition:
     residueName: str
+    smiles: Optional[str]
     atoms: list[CCDAtomDefinition]
     bonds: list[CCDBondDefinition]
 
@@ -138,8 +139,16 @@ class CCDResidueDefinition:
         reader.read(data)
         block = data[0]
 
-        # TODO: Fix
-        residueName = block.getObj('chem_comp.id')
+        residueName = block.getObj('chem_comp').getValue("id")
+
+        descriptorsData = block.getObj("pdbx_chem_comp_descriptor")
+        typeCol = descriptorsData.getAttributeIndex("type")
+        smilesCol = descriptorsData.getAttributeIndex("descriptor")
+        smiles = None
+        for row in descriptorsData.getRowList():
+            if row[typeCol] in ["SMILES", "SMILES_CANONICAL"]:
+                smiles = row[smilesCol]
+                break
 
         atomData = block.getObj('chem_comp_atom')
         atomNameCol = atomData.getAttributeIndex('atom_id')
@@ -179,7 +188,7 @@ class CCDResidueDefinition:
         else:
             bonds = []
 
-        return cls(residueName=residueName, atoms=atoms, bonds=bonds)
+        return cls(residueName=residueName, smiles=smiles, atoms=atoms, bonds=bonds)
 
 def _guessFileFormat(file, filename):
     """Guess whether a file is PDB or PDBx/mmCIF based on its filename and contents."""
