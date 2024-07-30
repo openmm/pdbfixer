@@ -1529,7 +1529,7 @@ class PDBFixer(object):
             return {}
 
         # Record the formal charges.
-        return {atom.atomName: atom.charge for atom in ccdDefinition.atoms}
+        return {atom.atomName: atom.charge for atom in ccdDefinition.atoms if not atom.leaving}
 
     def _createForceField(self, newTopology, water):
         """Create a force field to use for optimizing the positions of newly added atoms."""
@@ -1567,10 +1567,14 @@ class PDBFixer(object):
             template = app.ForceField._TemplateData(resName)
             forcefield._templates[resName] = template
             indexInResidue = {}
+            # If we can't find formal charges in the CCD, make everything uncharged
+            formalCharges = defaultdict(lambda: 0)
+            # See if we can get formal charges from the CCD
             if water:
-                formalCharges = self._downloadFormalCharges(residue.name)
-            else:
-                formalCharges = defaultdict(lambda: 0)
+                downloadedFormalCharges = self._downloadFormalCharges(residue.name)
+                if set(downloadedFormalCharges) == {atom.name for atom in residue.atoms()}:
+                    # We got formal charges and the atom names match, so we can use them
+                    formalCharges = downloadedFormalCharges
             for atom in residue.atoms():
                 element = atom.element
                 formalCharge = formalCharges.get(atom.name, 0)
