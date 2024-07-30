@@ -743,7 +743,7 @@ class PDBFixer(object):
 
     def _renameNewChains(self, startIndex):
         """Rename newly added chains to conform with existing naming conventions.
-        
+
         Parameters
         ----------
         startIndex : int
@@ -1533,7 +1533,10 @@ class PDBFixer(object):
             template = app.ForceField._TemplateData(resName)
             forcefield._templates[resName] = template
             indexInResidue = {}
-            formalCharges = self.downloadFormalCharges(residue.name)
+            if water:
+                formalCharges = self.downloadFormalCharges(residue.name)
+            else:
+                formalCharges = defaultdict(lambda: 0)
             for atom in residue.atoms():
                 element = atom.element
                 formalCharge = formalCharges.get(atom.name, 0)
