@@ -112,6 +112,9 @@ class Template:
 
 @dataclass
 class CCDAtomDefinition:
+    """
+    Description of an atom in a residue from the Chemical Component Dictionary (CCD).
+    """
     atomName: str
     symbol: str
     leaving: bool
@@ -121,6 +124,9 @@ class CCDAtomDefinition:
 
 @dataclass
 class CCDBondDefinition:
+    """
+    Description of a bond in a residue from the Chemical Component Dictionary (CCD).
+    """
     atom1: str
     atom2: str
     order: Literal['SING', 'DOUB', 'TRIP', 'QUAD', 'AROM', 'DELO', 'PI', 'POLY']
@@ -128,6 +134,9 @@ class CCDBondDefinition:
 
 @dataclass
 class CCDResidueDefinition:
+    """
+    Description of a residue from the Chemical Component Dictionary (CCD).
+    """
     residueName: str
     smiles: Optional[str]
     atoms: list[CCDAtomDefinition]
@@ -135,6 +144,9 @@ class CCDResidueDefinition:
 
     @classmethod
     def fromReader(cls, reader: PdbxReader) -> 'CCDResidueDefinition':
+        """
+        Create a CCDResidueDefinition by parsing a CCD CIF file.
+        """
         data = []
         reader.read(data)
         block = data[0]
@@ -440,34 +452,47 @@ class PDBFixer(object):
                     self.modifiedResidues.append(ModifiedResidue(row[asymIdCol], int(row[resNumCol]), row[resNameCol], row[standardResCol]))
 
 
-    def _downloadCCDDefinition(self, name):
-        """Attempt to download a residue definition from the PDB and register a template for it.
+    def _downloadCCDDefinition(self, residueName: str, checkCache: bool = True) -> Optional[CCDResidueDefinition]:
+        """
+        Download a residue definition from the Chemical Component Dictionary.
+
+        This method caches results in the ``PDBFixer`` object.
 
         Parameters
         ----------
-        name: str
-            The name of the residue, as specified in the PDB Chemical Component Dictionary.
+        residueName : str
+            The name of the residue, as specified in the PDB Chemical Component
+            Dictionary.
+        checkCache : bool
+            If ``False``, attempt to re-download the CCD entry regardless of
+            what is in the cache. Defaults to ``True``.
 
         Returns
         -------
-        True if a template was successfully registered, false otherwise.
+        None
+            If the residue could not be downloaded.
+        ccdDefinition : CCDResidueDefinition
+            The CCD definition for the requested residue.
         """
-        name = name.upper()
+        residueName = residueName.upper()
 
-        if name in self._ccdCache:
-            return self._ccdCache[name]
+        if checkCache and residueName in self._ccdCache:
+            return self._ccdCache[residueName]
 
         try:
-            file = urlopen(f'https://files.rcsb.org/ligands/download/{name}.cif')
+            file = urlopen(f'https://files.rcsb.org/ligands/download/{residueName}.cif')
             contents = file.read().decode('utf-8')
             file.close()
         except:
-            self._ccdCache[name] = False
-            return False
+            # None represents that the residue has been looked up and could not
+            # be found. This is distinct from an entry simply not being present
+            # in the cache.
+            self._ccdCache[residueName] = None
+            return None
 
         reader = PdbxReader(StringIO(contents))
         ccdDefinition = CCDResidueDefinition.fromReader(reader)
-        self._ccdCache[name] = ccdDefinition
+        self._ccdCache[residueName] = ccdDefinition
         return ccdDefinition
 
     def _getTemplate(self, name):
@@ -516,7 +541,7 @@ class PDBFixer(object):
         name = name.upper()
 
         ccdDefinition = self._downloadCCDDefinition(name)
-        if ccdDefinition == False:
+        if ccdDefinition is None:
             return False
 
         # Load the atoms.
@@ -1345,8 +1370,8 @@ class PDBFixer(object):
             if name not in app.Modeller._residueHydrogens:
                 # Try to download the definition.
                 ccdDefinition = self._downloadCCDDefinition(name)
-                if ccdDefinition == False:
-                    return False
+                if ccdDefinition is None:
+                    return None
 
                 # Record the atoms and bonds.
                 atoms = [(atom.atomName, atom.symbol.upper(), atom.leaving) for atom in ccdDefinition.atoms]
@@ -1489,7 +1514,7 @@ class PDBFixer(object):
         self.positions = modeller.positions
         self._renameNewChains(nChains)
 
-    def downloadFormalCharges(self, resName):
+    def _downloadFormalCharges(self, resName: str):
         """
         Download the formal charges for a residue name from the CCD
 
@@ -1500,7 +1525,7 @@ class PDBFixer(object):
         """
         # Try to download the definition.
         ccdDefinition = self._downloadCCDDefinition(resName.upper())
-        if ccdDefinition == False:
+        if ccdDefinition is None:
             return {}
 
         # Record the formal charges.
@@ -1543,7 +1568,7 @@ class PDBFixer(object):
             forcefield._templates[resName] = template
             indexInResidue = {}
             if water:
-                formalCharges = self.downloadFormalCharges(residue.name)
+                formalCharges = self._downloadFormalCharges(residue.name)
             else:
                 formalCharges = defaultdict(lambda: 0)
             for atom in residue.atoms():

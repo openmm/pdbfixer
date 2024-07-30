@@ -15,7 +15,7 @@ import openmm.unit
 )
 def test_charge_and_solvate(pdbCode, soluteCharge):
     """
-    Test that downloadCharges and addSolvent successfully neutralise the system
+    Test that addSolvent successfully neutralises systems
 
     Parameters
     ----------
