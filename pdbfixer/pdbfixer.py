@@ -467,7 +467,7 @@ class PDBFixer(object):
             return self.templates[name]
         return None
 
-    def registerTemplate(self, topology, positions, terminal=None, formalCharges=None):
+    def registerTemplate(self, topology, positions, terminal=None):
         """Register a template for a nonstandard residue.  This allows PDBFixer to add missing residues of this type,
         to add missing atoms to existing residues, and to mutate other residues to it.
         Parameters
