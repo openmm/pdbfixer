@@ -453,6 +453,7 @@ class PDBFixer(object):
             contents = file.read().decode('utf-8')
             file.close()
         except:
+            self._ccdCache[name] = False
             return False
 
         reader = PdbxReader(StringIO(contents))
