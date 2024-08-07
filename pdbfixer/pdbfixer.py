@@ -37,8 +37,9 @@ import openmm.app as app
 import openmm.unit as unit
 from openmm.app.internal.pdbstructure import PdbStructure
 from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
-from openmm.app.element import hydrogen, oxygen, nitrogen, fluorine
+from openmm.app.element import hydrogen, oxygen
 from openmm.app.forcefield import NonbondedGenerator
+from .hbonds import HydrogenBondOptimizer
 
 # Support Cythonized functions in OpenMM 7.3
 # and also implementations in older versions.
@@ -50,7 +51,6 @@ except ImportError:
 
 import numpy as np
 import numpy.linalg as lin
-import itertools
 import sys
 import os
 import os.path
@@ -1342,178 +1342,7 @@ class PDBFixer(object):
         return variant
 
     def optimizeHydrogenBonds(self):
-        # Record the parent atom that every hydrogen is bonded to.
-
-        parent = {}
-        for atom1, atom2 in self.topology.bonds():
-            if atom1.element == hydrogen and atom2.element != hydrogen:
-                parent[atom1] = atom2
-            elif atom2.element == hydrogen and atom1.element != hydrogen:
-                parent[atom2] = atom1
-
-        # Record the donors and acceptors in each residue.
-
-        residueDonors = {}
-        residueAcceptors = {}
-        for residue in self.topology.residues():
-            residueDonors[residue] = []
-            residueAcceptors[residue] = []
-            for atom in residue.atoms():
-                if atom.element == hydrogen and parent[atom].element in (oxygen, nitrogen, fluorine):
-                    residueDonors[residue].append((atom, parent[atom]))
-                elif atom.element in (oxygen, nitrogen, fluorine):
-                    residueAcceptors[residue].append(atom)
-
-        # Record the groups of atoms we will try to rotate.
-
-        rotations = {
-            'ASN': (('CB', 'CG'), ('OD1', 'ND2', 'HD21', 'HD22')),
-            'GLN': (('CG', 'CD'), ('OE1', 'NE2', 'HE21', 'HE22')),
-            'HIS': (('CB', 'CG'), ('ND1', 'CD2', 'CE1', 'NE2', 'HD1', 'HD2', 'HE1', 'HE2'))
-        }
-        residueRotations = {}
-        for residue in self.topology.residues():
-            if residue.name in rotations:
-                axis, atoms = rotations[residue.name]
-                residueRotations[residue] = ([atom for atom in residue.atoms() if atom.name in axis],
-                                             [atom for atom in residue.atoms() if atom.name in atoms])
-
-        # For each residue we will be modifying, record all other residues that are close enough
-        # to potentially form hydrogen bonds.
-
-        residueNeighbors = {}
-        positions = self.positions.value_in_unit(unit.nanometer)
-        for res1 in residueRotations:
-            residueNeighbors[res1] = []
-            for res2 in self.topology.residues():
-                if res1 != res2:
-                    close = False
-                    for atom1 in residueRotations[res1][1]:
-                        for atom2 in res2.atoms():
-                            delta = positions[atom1.index]-positions[atom2.index]
-                            if unit.norm(delta) < 0.5:
-                                close = True
-                                break
-                        if close:
-                            break
-                    if close:
-                        residueNeighbors[res1].append(res2)
-
-        # Divide them into clusters that need to be analyzed together.
-
-        clusters = [[res] for res in residueNeighbors]
-        converged = False
-        while not converged:
-            converged = True
-            for i in range(len(clusters)):
-                if i >= len(clusters):
-                    break
-                c1 = clusters[i]
-                for j in range(i+1, len(clusters)):
-                    c2 = clusters[j]
-                    if any(res2 in residueNeighbors[res1] for res1, res2 in itertools.product(c1, c2)):
-                        c1 += c2
-                        del clusters[j]
-                        converged = False
-                        break
-
-        # Create the rotated version of the coordinates.
-
-        rotatedPositions = positions[:]
-        for residue in residueRotations:
-            axis, atoms = residueRotations[residue]
-            center = positions[axis[1].index]
-            e = center-positions[axis[0].index]
-            e /= unit.norm(e)
-            for atom in atoms:
-                d = positions[atom.index]-center
-                dot = np.dot(e, d)
-                rotatedPositions[atom.index] = center - d + 2*dot*e
-
-        # Define a function to decide whether three atoms form a hydrogen bond.
-
-        def isHbond(d, h, a):
-            if unit.norm(d-a) > 0.35:
-                return False
-            deltaDH = h-d
-            deltaHA = a-h
-            deltaDH /= unit.norm(deltaDH)
-            deltaHA /= unit.norm(deltaHA)
-            return np.arccos(np.dot(deltaDH, deltaHA)) < 50*np.pi/180
-
-        # Define a function to count the number of hydrogen bonds between two residues.
-
-        def countHbonds(res1, res2, pos1, pos2):
-            count = 0
-            for h, d in residueDonors[res1]:
-                for a in residueAcceptors[res2]:
-                    if isHbond(pos1[d.index], pos1[h.index], pos2[a.index]):
-                        count += 1
-            for h, d in residueDonors[res2]:
-                for a in residueAcceptors[res1]:
-                    if isHbond(pos2[d.index], pos2[h.index], pos1[a.index]):
-                        count += 1
-            return count
-
-        # For each variable residue, consider hydrogen bonds to other residues that are
-        # *not* variable.  How does the number change?
-
-        residueRotationHbondChange = defaultdict(int)
-        for residue in residueNeighbors:
-            for neighbor in residueNeighbors[residue]:
-                if neighbor not in residueNeighbors:
-                    before = countHbonds(residue, neighbor, positions, positions)
-                    after = countHbonds(residue, neighbor, rotatedPositions, positions)
-                    residueRotationHbondChange[residue] += after-before
-
-        # Now consider pairs of residues that are close enough to form hydrogen bonds to
-        # each other.
-
-        pairRotationHbonds = {}
-        for residue in residueNeighbors:
-            for neighbor in residueNeighbors[residue]:
-                if neighbor.index > residue.index and neighbor in residueNeighbors:
-                    pairRotationHbonds[(residue, neighbor)] = [
-                        [
-                            countHbonds(residue, neighbor, positions, positions),
-                            countHbonds(residue, neighbor, positions, rotatedPositions)
-                        ],
-                        [
-                            countHbonds(residue, neighbor, rotatedPositions, positions),
-                            countHbonds(residue, neighbor, rotatedPositions, rotatedPositions)
-                        ]
-                    ]
-
-        # Optimize each cluster.
-
-        newPositions = positions[:]
-        for cluster in clusters:
-            bestCombination = None
-            bestBonds = -1
-
-            # Loop over all possible combinations of which residues to rotate.
-
-            for combination in itertools.product(*[[0,1]]*len(cluster)):
-                bonds = 0
-                for rotated, residue in zip(combination, cluster):
-                    if rotated == 1:
-                        bonds += residueRotationHbondChange[residue]
-                    for neighbor in residueNeighbors[residue]:
-                        if (residue, neighbor) in pairRotationHbonds:
-                            neighborRotated = combination[cluster.index(neighbor)]
-                            bonds += pairRotationHbonds[(residue, neighbor)][rotated][neighborRotated]
-                if bonds > bestBonds:
-                    bestCombination = combination
-                    bestBonds = bonds
-
-            # Set the positions to the optimal set of rotations.
-
-            for rotated, residue in zip(bestCombination, cluster):
-                if rotated == 1:
-                    for atom in residueRotations[residue][1]:
-                        newPositions[atom.index] = rotatedPositions[atom.index]
-        self.positions = newPositions*unit.nanometer
-
+        optimizer = HydrogenBondOptimizer(self)
 
     def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar, boxShape='cube'):
         """Add a solvent box surrounding the structure.
