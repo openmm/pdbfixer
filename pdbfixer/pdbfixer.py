@@ -1514,7 +1514,7 @@ class PDBFixer(object):
         self.positions = modeller.positions
         self._renameNewChains(nChains)
 
-    def _downloadFormalCharges(self, resName: str):
+    def _downloadFormalCharges(self, resName: str, includeLeavingAtoms: bool = True) -> dict[str, int]:
         """
         Download the formal charges for a residue name from the CCD
 
@@ -1529,7 +1529,11 @@ class PDBFixer(object):
             return {}
 
         # Record the formal charges.
-        return {atom.atomName: atom.charge for atom in ccdDefinition.atoms if not atom.leaving}
+        return {
+            atom.atomName: atom.charge
+            for atom in ccdDefinition.atoms
+            if includeLeavingAtoms or not atom.leaving
+        }
 
     def _createForceField(self, newTopology, water):
         """Create a force field to use for optimizing the positions of newly added atoms."""
@@ -1571,8 +1575,18 @@ class PDBFixer(object):
             formalCharges = defaultdict(lambda: 0)
             # See if we can get formal charges from the CCD
             if water:
+                # The formal charges in the CCD can only be relied on if the
+                # residue has all and only the same atoms, with the caveat that
+                # leaving atoms are optional
                 downloadedFormalCharges = self._downloadFormalCharges(residue.name)
-                if set(downloadedFormalCharges) == {atom.name for atom in residue.atoms()}:
+                essentialAtoms = set(
+                    self._downloadFormalCharges(residue.name, includeLeavingAtoms=False)
+                )
+                atomsInResidue = {atom.name for atom in residue.atoms()}
+                if (
+                    atomsInResidue.issuperset(essentialAtoms)
+                    and atomsInResidue.issubset(downloadedFormalCharges)
+                ):
                     # We got formal charges and the atom names match, so we can use them
                     formalCharges = downloadedFormalCharges
             for atom in residue.atoms():
