@@ -9,6 +9,7 @@ from collections.abc import Iterator
 from typing import List
 
 class HydrogenBondOptimizer(object):
+    """This class rotates sidechains to optimize the hydrogen bond network."""
     
     def __init__(self, fixer):
         topology, positions = self.protonateHistidines(fixer)
@@ -30,7 +31,7 @@ class HydrogenBondOptimizer(object):
             self.residueDonors[residue] = []
             self.residueAcceptors[residue] = []
             for atom in residue.atoms():
-                if atom.element == hydrogen and parent[atom].element in (oxygen, nitrogen, fluorine):
+                if atom.element == hydrogen and atom in parent and parent[atom].element in (oxygen, nitrogen, fluorine):
                     self.residueDonors[residue].append((atom, parent[atom]))
                 elif atom.element in (oxygen, nitrogen, fluorine):
                     self.residueAcceptors[residue].append(atom)
@@ -162,7 +163,7 @@ class HydrogenBondOptimizer(object):
 
         # Create the final topology and positions.
 
-        fixer.topology, fixer.positions = self.deleteExtraHydrogens(fixer, topology, positions)
+        fixer.topology, fixer.positions = self.deleteExtraHydrogens(fixer, topology, newPositions)
 
     def protonateHistidines(self, fixer):
         """Add a second hydrogen to neutral histidines so we can identify bonds formed by both of them."""
@@ -256,13 +257,13 @@ class HydrogenBondOptimizer(object):
 
     def isHbond(self, d: mm.Vec3, h: mm.Vec3, a: mm.Vec3):
         """Decide whether three atoms could form a hydrogen bond."""
-        if unit.norm(d-a) > 0.35:
+        if unit.norm(h-a) > 0.25:
             return False
         deltaDH = h-d
         deltaHA = a-h
         deltaDH /= unit.norm(deltaDH)
         deltaHA /= unit.norm(deltaHA)
-        return np.arccos(np.dot(deltaDH, deltaHA)) < 50*np.pi/180
+        return np.arccos(np.dot(deltaDH, deltaHA)) < 60*np.pi/180
 
     def countHbonds(self, res1: app.Residue, res2: app.Residue, pos1: List[mm.Vec3], pos2: List[mm.Vec3]):
         """Count the number of hydrogen bonds between two residues."""
