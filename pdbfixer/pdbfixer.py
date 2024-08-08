@@ -39,6 +39,7 @@ from openmm.app.internal.pdbstructure import PdbStructure
 from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
 from openmm.app.element import hydrogen, oxygen
 from openmm.app.forcefield import NonbondedGenerator
+from .hbonds import HydrogenBondOptimizer
 
 # Support Cythonized functions in OpenMM 7.3
 # and also implementations in older versions.
@@ -1339,6 +1340,18 @@ class PDBFixer(object):
                     continue
             variant.append((h, parent))
         return variant
+
+    def optimizeHydrogenBonds(self):
+        """Optimize the hydrogen bond network.
+
+        This should be called after hydrogens have been added.  It considers two types of changes:
+
+        1. 180 degree rotations of the terminal groups in HIS, ASN, and GLN sidechains.
+        2. For neutral HIS residues, exchanging the hydrogen position between ND1 and NE2.
+
+        It considers all possible combinations of them to find the one producing the largest number of hydrogen bonds.
+        """
+        HydrogenBondOptimizer(self)
 
     def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar, boxShape='cube'):
         """Add a solvent box surrounding the structure.
