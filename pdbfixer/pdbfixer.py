@@ -466,7 +466,7 @@ class PDBFixer(object):
         """
         residueName = residueName.upper()
 
-        if checkCache and residueName in self._ccdCache:
+        if residueName in self._ccdCache:
             return self._ccdCache[residueName]
 
         try:
