@@ -4,7 +4,7 @@
     </head>
 <body>
 <h1 style="text-align:center">PDBFixer</h1>
-<div style="text-align:center">Copyright 2013-2023 by Peter Eastman and Stanford University</div>
+<div style="text-align:center">Copyright 2013-2024 by Peter Eastman and Stanford University</div>
 
 <h1>1. Introduction</h1>
 
@@ -206,6 +206,14 @@ If you want to add missing hydrogen atoms, call
 <tt>fixer.addMissingHydrogens(7.0)</tt>
 <p>
 The argument is the pH based on which to select protonation states.
+
+<h3>Optimize Hydrogen Bonds</h3>
+
+You can optimize the hydrogen bonding network by calling
+<p>
+<tt>fixer.optimizeHydrogenBonds()</tt>
+<p>
+This performs 180 degree rotations of HIS, ASN, and GLN sidechains, and moves hydrogens on neutral HIS residues, to maximize the total number of hydrogen bonds.
 
 <h3>Add Water</h3>
 
