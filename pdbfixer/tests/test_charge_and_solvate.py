@@ -29,16 +29,12 @@ def test_charge_and_solvate(pdbCode, soluteCharge):
     fixer = PDBFixer(pdbid=pdbCode)
     fixer.findMissingResidues()
 
-    chains_to_cap = {chain for chain, resi in fixer.missingResidues}
-    for chainidx in chains_to_cap:
-        chain = [*fixer.topology.chains()][chainidx]
-        last_resi = len([*chain.residues()])
-        # Capping with GLY because ACE/NME currently breaks addMissingHydrogens
-        # Adding a cap keeps the protein compact and the addSolvent call quick
-        fixer.missingResidues[chainidx, 0] = ["GLY"]
-        fixer.missingResidues[chainidx, last_resi] = ["GLY"]
-        # fixer.missingResidues[chainidx, 0] = ['ACE']
-        # fixer.missingResidues[chainidx, last_resi] = ['NME']
+    chainLengths = [len([*chain.residues()]) for chain in fixer.topology.chains()]
+    for chainidx, residx in list(fixer.missingResidues):
+        if residx == 0:
+            fixer.missingResidues[chainidx, residx] = ["ACE"]
+        elif residx == chainLengths[chainidx]:
+            fixer.missingResidues[chainidx, residx] = ["NME"]
 
     fixer.findNonstandardResidues()
     fixer.replaceNonstandardResidues()

@@ -138,7 +138,6 @@ class CCDResidueDefinition:
     Description of a residue from the Chemical Component Dictionary (CCD).
     """
     residueName: str
-    smiles: Optional[str]
     atoms: list[CCDAtomDefinition]
     bonds: list[CCDBondDefinition]
 
@@ -155,12 +154,6 @@ class CCDResidueDefinition:
 
         descriptorsData = block.getObj("pdbx_chem_comp_descriptor")
         typeCol = descriptorsData.getAttributeIndex("type")
-        smilesCol = descriptorsData.getAttributeIndex("descriptor")
-        smiles = None
-        for row in descriptorsData.getRowList():
-            if row[typeCol] in ["SMILES", "SMILES_CANONICAL"]:
-                smiles = row[smilesCol]
-                break
 
         atomData = block.getObj('chem_comp_atom')
         atomNameCol = atomData.getAttributeIndex('atom_id')
@@ -200,7 +193,7 @@ class CCDResidueDefinition:
         else:
             bonds = []
 
-        return cls(residueName=residueName, smiles=smiles, atoms=atoms, bonds=bonds)
+        return cls(residueName=residueName, atoms=atoms, bonds=bonds)
 
 def _guessFileFormat(file, filename):
     """Guess whether a file is PDB or PDBx/mmCIF based on its filename and contents."""
@@ -452,7 +445,7 @@ class PDBFixer(object):
                     self.modifiedResidues.append(ModifiedResidue(row[asymIdCol], int(row[resNumCol]), row[resNameCol], row[standardResCol]))
 
 
-    def _downloadCCDDefinition(self, residueName: str, checkCache: bool = True) -> Optional[CCDResidueDefinition]:
+    def _downloadCCDDefinition(self, residueName: str) -> Optional[CCDResidueDefinition]:
         """
         Download a residue definition from the Chemical Component Dictionary.
 
@@ -463,9 +456,6 @@ class PDBFixer(object):
         residueName : str
             The name of the residue, as specified in the PDB Chemical Component
             Dictionary.
-        checkCache : bool
-            If ``False``, attempt to re-download the CCD entry regardless of
-            what is in the cache. Defaults to ``True``.
 
         Returns
         -------
@@ -1572,7 +1562,7 @@ class PDBFixer(object):
             forcefield._templates[resName] = template
             indexInResidue = {}
             # If we can't find formal charges in the CCD, make everything uncharged
-            formalCharges = defaultdict(lambda: 0)
+            formalCharges = defaultdict(int)
             # See if we can get formal charges from the CCD
             if water:
                 # The formal charges in the CCD can only be relied on if the
