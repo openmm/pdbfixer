@@ -1432,7 +1432,7 @@ class PDBFixer(object):
             variant.append((h, parent))
         return variant
 
-    def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar, boxShape='cube'):
+    def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar, boxShape='cube', forceField=None):
         """Add a solvent box surrounding the structure.
 
         Parameters
@@ -1449,8 +1449,13 @@ class PDBFixer(object):
             The type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'.
         ionicStrength : openmm.unit.Quantity with units compatible with molar, optional, default=0*molar
             The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
-        boxShape: str='cube'
-            the box shape to use.  Allowed values are 'cube', 'dodecahedron', and 'octahedron'.  If padding is None, this is ignored.
+        boxShape : str='cube'
+            The box shape to use.  Allowed values are 'cube', 'dodecahedron', and 'octahedron'.  If padding is None, this is ignored.
+        forceField : openmm.app.ForceField, optional
+            The force field to use for determining van der Waals radii and
+            atomic charges. If not set, a force field will be generated. If the
+            solvated topology has a nonzero total charge, provide a force field
+            that correctly charges the solute.
 
         Examples
         --------
@@ -1468,8 +1473,9 @@ class PDBFixer(object):
 
         nChains = sum(1 for _ in self.topology.chains())
         modeller = app.Modeller(self.topology, self.positions)
-        forcefield = self._createForceField(self.topology, True)
-        modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, boxVectors=boxVectors, boxShape=boxShape, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        if forceField is None:
+            forceField = self._createForceField(self.topology, True)
+        modeller.addSolvent(forceField, padding=padding, boxSize=boxSize, boxVectors=boxVectors, boxShape=boxShape, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
         self.topology = modeller.topology
         self.positions = modeller.positions
         self._renameNewChains(nChains)
