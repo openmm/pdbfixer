@@ -32,9 +32,9 @@ def test_charge_and_solvate(pdbCode, soluteCharge):
     chainLengths = [len([*chain.residues()]) for chain in fixer.topology.chains()]
     for chainidx, residx in list(fixer.missingResidues):
         if residx == 0:
-            fixer.missingResidues[chainidx, residx] = ["ACE"]
+            fixer.missingResidues[chainidx, residx] = []
         elif residx == chainLengths[chainidx]:
-            fixer.missingResidues[chainidx, residx] = ["NME"]
+            fixer.missingResidues[chainidx, residx] = []
 
     fixer.findNonstandardResidues()
     fixer.replaceNonstandardResidues()
