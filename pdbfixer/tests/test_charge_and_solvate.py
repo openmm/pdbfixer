@@ -32,16 +32,18 @@ def test_charge_and_solvate(pdbCode, soluteCharge):
     chainLengths = [len([*chain.residues()]) for chain in fixer.topology.chains()]
     for chainidx, residx in list(fixer.missingResidues):
         if residx == 0:
-            fixer.missingResidues[chainidx, residx] = []
+            fixer.missingResidues[chainidx, residx] = ["GLY"]
+            # fixer.missingResidues[chainidx, residx] = []
+            # fixer.missingResidues[chainidx, residx] = ["ACE"]
         elif residx == chainLengths[chainidx]:
-            fixer.missingResidues[chainidx, residx] = []
+            fixer.missingResidues[chainidx, residx] = ["GLY"]
+            # fixer.missingResidues[chainidx, residx] = []
+            # fixer.missingResidues[chainidx, residx] = ["NME"]
 
-    fixer.findNonstandardResidues()
-    fixer.replaceNonstandardResidues()
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()
-
     fixer.addMissingHydrogens(pH=7.4)
+
     fixer.addSolvent(
         padding=2.0 * openmm.unit.nanometer,
         ionicStrength=0.1 * openmm.unit.molar,
