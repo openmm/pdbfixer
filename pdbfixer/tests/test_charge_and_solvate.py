@@ -11,6 +11,7 @@ import openmm.unit
         ("110D", -5),
         ("1CNR", 0),
         ("1ESD", -21),
+        ("25c8", -2),
     ],
 )
 def test_charge_and_solvate(pdbCode, soluteCharge):
