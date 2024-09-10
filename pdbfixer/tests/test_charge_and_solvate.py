@@ -34,12 +34,8 @@ def test_charge_and_solvate(pdbCode, soluteCharge):
     for chainidx, residx in list(fixer.missingResidues):
         if residx == 0:
             fixer.missingResidues[chainidx, residx] = ["GLY"]
-            # fixer.missingResidues[chainidx, residx] = []
-            # fixer.missingResidues[chainidx, residx] = ["ACE"]
         elif residx == chainLengths[chainidx]:
             fixer.missingResidues[chainidx, residx] = ["GLY"]
-            # fixer.missingResidues[chainidx, residx] = []
-            # fixer.missingResidues[chainidx, residx] = ["NME"]
 
     fixer.findMissingAtoms()
     fixer.addMissingAtoms()
