@@ -1361,7 +1361,7 @@ class PDBFixer(object):
                 # Try to download the definition.
                 ccdDefinition = self._downloadCCDDefinition(name)
                 if ccdDefinition is None:
-                    return None
+                    continue
 
                 # Record the atoms and bonds.
                 atoms = [(atom.atomName, atom.symbol.upper(), atom.leaving) for atom in ccdDefinition.atoms]
