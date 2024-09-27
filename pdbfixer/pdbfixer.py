@@ -29,6 +29,8 @@ OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 USE OR OTHER DEALINGS IN THE SOFTWARE.
 """
 from __future__ import absolute_import
+from dataclasses import dataclass
+from typing import Literal, Optional
 __author__ = "Peter Eastman"
 __version__ = "1.7"
 
@@ -107,6 +109,91 @@ class Template:
         if terminal is None:
             terminal = [False]*topology.getNumAtoms()
         self.terminal = terminal
+
+@dataclass
+class CCDAtomDefinition:
+    """
+    Description of an atom in a residue from the Chemical Component Dictionary (CCD).
+    """
+    atomName: str
+    symbol: str
+    leaving: bool
+    coords: mm.Vec3
+    charge: int
+    aromatic: bool
+
+@dataclass
+class CCDBondDefinition:
+    """
+    Description of a bond in a residue from the Chemical Component Dictionary (CCD).
+    """
+    atom1: str
+    atom2: str
+    order: Literal['SING', 'DOUB', 'TRIP', 'QUAD', 'AROM', 'DELO', 'PI', 'POLY']
+    aromatic: bool
+
+@dataclass
+class CCDResidueDefinition:
+    """
+    Description of a residue from the Chemical Component Dictionary (CCD).
+    """
+    residueName: str
+    atoms: list[CCDAtomDefinition]
+    bonds: list[CCDBondDefinition]
+
+    @classmethod
+    def fromReader(cls, reader: PdbxReader) -> 'CCDResidueDefinition':
+        """
+        Create a CCDResidueDefinition by parsing a CCD CIF file.
+        """
+        data = []
+        reader.read(data)
+        block = data[0]
+
+        residueName = block.getObj('chem_comp').getValue("id")
+
+        descriptorsData = block.getObj("pdbx_chem_comp_descriptor")
+        typeCol = descriptorsData.getAttributeIndex("type")
+
+        atomData = block.getObj('chem_comp_atom')
+        atomNameCol = atomData.getAttributeIndex('atom_id')
+        symbolCol = atomData.getAttributeIndex('type_symbol')
+        leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
+        xCol = atomData.getAttributeIndex('pdbx_model_Cartn_x_ideal')
+        yCol = atomData.getAttributeIndex('pdbx_model_Cartn_y_ideal')
+        zCol = atomData.getAttributeIndex('pdbx_model_Cartn_z_ideal')
+        chargeCol = atomData.getAttributeIndex('charge')
+        aromaticCol = atomData.getAttributeIndex('pdbx_aromatic_flag')
+
+        atoms = [
+            CCDAtomDefinition(
+                atomName=row[atomNameCol],
+                symbol=row[symbolCol],
+                leaving=row[leavingCol] == 'Y',
+                coords=mm.Vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1,
+                charge=row[chargeCol],
+                aromatic=row[aromaticCol] == 'Y'
+            ) for row in atomData.getRowList()
+        ]
+
+        bondData = block.getObj('chem_comp_bond')
+        if bondData is not None:
+            atom1Col = bondData.getAttributeIndex('atom_id_1')
+            atom2Col = bondData.getAttributeIndex('atom_id_2')
+            orderCol = bondData.getAttributeIndex('value_order')
+            aromaticCol = bondData.getAttributeIndex('pdbx_aromatic_flag')
+            bonds = [
+                CCDBondDefinition(
+                    atom1=row[atom1Col],
+                    atom2=row[atom2Col],
+                    order=row[orderCol],
+                    aromatic=row[aromaticCol] == 'Y',
+                ) for row in bondData.getRowList()
+            ]
+        else:
+            bonds = []
+
+        return cls(residueName=residueName, atoms=atoms, bonds=bonds)
 
 def _guessFileFormat(file, filename):
     """Guess whether a file is PDB or PDBx/mmCIF based on its filename and contents."""
@@ -279,6 +366,9 @@ class PDBFixer(object):
         if len(atoms) == 0:
             raise Exception("Structure contains no atoms.")
 
+        # Keep a cache of downloaded CCD definitions
+        self._ccdCache = {}
+
         # Load the templates.
 
         self.templates = {}
@@ -354,6 +444,47 @@ class PDBFixer(object):
                 for row in modData.getRowList():
                     self.modifiedResidues.append(ModifiedResidue(row[asymIdCol], int(row[resNumCol]), row[resNameCol], row[standardResCol]))
 
+
+    def _downloadCCDDefinition(self, residueName: str) -> Optional[CCDResidueDefinition]:
+        """
+        Download a residue definition from the Chemical Component Dictionary.
+
+        This method caches results in the ``PDBFixer`` object.
+
+        Parameters
+        ----------
+        residueName : str
+            The name of the residue, as specified in the PDB Chemical Component
+            Dictionary.
+
+        Returns
+        -------
+        None
+            If the residue could not be downloaded.
+        ccdDefinition : CCDResidueDefinition
+            The CCD definition for the requested residue.
+        """
+        residueName = residueName.upper()
+
+        if residueName in self._ccdCache:
+            return self._ccdCache[residueName]
+
+        try:
+            file = urlopen(f'https://files.rcsb.org/ligands/download/{residueName}.cif')
+            contents = file.read().decode('utf-8')
+            file.close()
+        except:
+            # None represents that the residue has been looked up and could not
+            # be found. This is distinct from an entry simply not being present
+            # in the cache.
+            self._ccdCache[residueName] = None
+            return None
+
+        reader = PdbxReader(StringIO(contents))
+        ccdDefinition = CCDResidueDefinition.fromReader(reader)
+        self._ccdCache[residueName] = ccdDefinition
+        return ccdDefinition
+
     def _getTemplate(self, name):
         """Return the template with a name.  If none has been registered, this will return None."""
         if name in self.templates:
@@ -398,49 +529,30 @@ class PDBFixer(object):
         True if a template was successfully registered, false otherwise.
         """
         name = name.upper()
-        try:
-            file = urlopen(f'https://files.rcsb.org/ligands/download/{name}.cif')
-            contents = file.read().decode('utf-8')
-            file.close()
-        except:
+
+        ccdDefinition = self._downloadCCDDefinition(name)
+        if ccdDefinition is None:
             return False
 
         # Load the atoms.
-
-        from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
-        reader = PdbxReader(StringIO(contents))
-        data = []
-        reader.read(data)
-        block = data[0]
-        atomData = block.getObj('chem_comp_atom')
-        atomNameCol = atomData.getAttributeIndex('atom_id')
-        symbolCol = atomData.getAttributeIndex('type_symbol')
-        leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
-        xCol = atomData.getAttributeIndex('pdbx_model_Cartn_x_ideal')
-        yCol = atomData.getAttributeIndex('pdbx_model_Cartn_y_ideal')
-        zCol = atomData.getAttributeIndex('pdbx_model_Cartn_z_ideal')
         topology = app.Topology()
         chain = topology.addChain()
         residue = topology.addResidue(name, chain)
         positions = []
         atomByName = {}
         terminal = []
-        for row in atomData.getRowList():
-            atomName = row[atomNameCol]
-            atom = topology.addAtom(atomName, app.Element.getBySymbol(row[symbolCol]), residue)
+        for atomDefinition in ccdDefinition.atoms:
+            atomName = atomDefinition.atomName
+            atom = topology.addAtom(atomName, app.Element.getBySymbol(atomDefinition.symbol), residue)
             atomByName[atomName] = atom
-            terminal.append(row[leavingCol] == 'Y')
-            positions.append(mm.Vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1)
+            terminal.append(atomDefinition.leaving)
+            positions.append(atomDefinition.coords)
         positions = positions*unit.nanometers
 
         # Load the bonds.
+        for bondDefinition in ccdDefinition.bonds:
+            topology.addBond(atomByName[bondDefinition.atom1], atomByName[bondDefinition.atom2])
 
-        bondData = block.getObj('chem_comp_bond')
-        if bondData is not None:
-            atom1Col = bondData.getAttributeIndex('atom_id_1')
-            atom2Col = bondData.getAttributeIndex('atom_id_2')
-            for row in bondData.getRowList():
-                topology.addBond(atomByName[row[atom1Col]], atomByName[row[atom2Col]])
         self.registerTemplate(topology, positions, terminal)
         return True
 
@@ -655,7 +767,7 @@ class PDBFixer(object):
 
     def _renameNewChains(self, startIndex):
         """Rename newly added chains to conform with existing naming conventions.
-        
+
         Parameters
         ----------
         startIndex : int
@@ -1247,33 +1359,13 @@ class PDBFixer(object):
         for name in resnames:
             if name not in app.Modeller._residueHydrogens:
                 # Try to download the definition.
-
-                try:
-                    file = urlopen(f'https://files.rcsb.org/ligands/download/{name}.cif')
-                    contents = file.read().decode('utf-8')
-                    file.close()
-                except:
+                ccdDefinition = self._downloadCCDDefinition(name)
+                if ccdDefinition is None:
                     continue
 
                 # Record the atoms and bonds.
-
-                from openmm.app.internal.pdbx.reader.PdbxReader import PdbxReader
-                reader = PdbxReader(StringIO(contents))
-                data = []
-                reader.read(data)
-                block = data[0]
-                atomData = block.getObj('chem_comp_atom')
-                atomNameCol = atomData.getAttributeIndex('atom_id')
-                symbolCol = atomData.getAttributeIndex('type_symbol')
-                leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
-                atoms = [(row[atomNameCol], row[symbolCol].upper(), row[leavingCol] == 'Y') for row in atomData.getRowList()]
-                bondData = block.getObj('chem_comp_bond')
-                if bondData is None:
-                    bonds = []
-                else:
-                    atom1Col = bondData.getAttributeIndex('atom_id_1')
-                    atom2Col = bondData.getAttributeIndex('atom_id_2')
-                    bonds = [(row[atom1Col], row[atom2Col]) for row in bondData.getRowList()]
+                atoms = [(atom.atomName, atom.symbol.upper(), atom.leaving) for atom in ccdDefinition.atoms]
+                bonds = [(bond.atom1, bond.atom2) for bond in ccdDefinition.bonds]
                 definitions[name] = (atoms, bonds)
         return definitions
 
@@ -1340,7 +1432,7 @@ class PDBFixer(object):
             variant.append((h, parent))
         return variant
 
-    def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar, boxShape='cube'):
+    def addSolvent(self, boxSize=None, padding=None, boxVectors=None, positiveIon='Na+', negativeIon='Cl-', ionicStrength=0*unit.molar, boxShape='cube', forceField=None):
         """Add a solvent box surrounding the structure.
 
         Parameters
@@ -1357,8 +1449,13 @@ class PDBFixer(object):
             The type of negative ion to add.  Allowed values are 'Cl-', 'Br-', 'F-', and 'I-'.
         ionicStrength : openmm.unit.Quantity with units compatible with molar, optional, default=0*molar
             The total concentration of ions (both positive and negative) to add.  This does not include ions that are added to neutralize the system.
-        boxShape: str='cube'
-            the box shape to use.  Allowed values are 'cube', 'dodecahedron', and 'octahedron'.  If padding is None, this is ignored.
+        boxShape : str='cube'
+            The box shape to use.  Allowed values are 'cube', 'dodecahedron', and 'octahedron'.  If padding is None, this is ignored.
+        forceField : openmm.app.ForceField, optional
+            The force field to use for determining van der Waals radii and
+            atomic charges. If not set, a force field will be generated. If the
+            solvated topology has a nonzero total charge, provide a force field
+            that correctly charges the solute.
 
         Examples
         --------
@@ -1376,8 +1473,9 @@ class PDBFixer(object):
 
         nChains = sum(1 for _ in self.topology.chains())
         modeller = app.Modeller(self.topology, self.positions)
-        forcefield = self._createForceField(self.topology, True)
-        modeller.addSolvent(forcefield, padding=padding, boxSize=boxSize, boxVectors=boxVectors, boxShape=boxShape, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        if forceField is None:
+            forceField = self._createForceField(self.topology, True)
+        modeller.addSolvent(forceField, padding=padding, boxSize=boxSize, boxVectors=boxVectors, boxShape=boxShape, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
         self.topology = modeller.topology
         self.positions = modeller.positions
         self._renameNewChains(nChains)
@@ -1411,6 +1509,27 @@ class PDBFixer(object):
         self.topology = modeller.topology
         self.positions = modeller.positions
         self._renameNewChains(nChains)
+
+    def _downloadFormalCharges(self, resName: str, includeLeavingAtoms: bool = True) -> dict[str, int]:
+        """
+        Download the formal charges for a residue name from the CCD
+
+        Returns
+        -------
+        formalCharges
+            Dictionary mapping from atom names (``str``) to formal charges (``int``)
+        """
+        # Try to download the definition.
+        ccdDefinition = self._downloadCCDDefinition(resName.upper())
+        if ccdDefinition is None:
+            return {}
+
+        # Record the formal charges.
+        return {
+            atom.atomName: atom.charge
+            for atom in ccdDefinition.atoms
+            if includeLeavingAtoms or not atom.leaving
+        }
 
     def _createForceField(self, newTopology, water):
         """Create a force field to use for optimizing the positions of newly added atoms."""
@@ -1448,12 +1567,31 @@ class PDBFixer(object):
             template = app.ForceField._TemplateData(resName)
             forcefield._templates[resName] = template
             indexInResidue = {}
+            # If we can't find formal charges in the CCD, make everything uncharged
+            formalCharges = defaultdict(int)
+            # See if we can get formal charges from the CCD
+            if water:
+                # The formal charges in the CCD can only be relied on if the
+                # residue has all and only the same atoms, with the caveat that
+                # leaving atoms are optional
+                downloadedFormalCharges = self._downloadFormalCharges(residue.name)
+                essentialAtoms = set(
+                    self._downloadFormalCharges(residue.name, includeLeavingAtoms=False)
+                )
+                atomsInResidue = {atom.name for atom in residue.atoms()}
+                if (
+                    atomsInResidue.issuperset(essentialAtoms)
+                    and atomsInResidue.issubset(downloadedFormalCharges)
+                ):
+                    # We got formal charges and the atom names match, so we can use them
+                    formalCharges = downloadedFormalCharges
             for atom in residue.atoms():
                 element = atom.element
-                typeName = 'extra_'+element.symbol
-                if element not in atomTypes:
-                    atomTypes[element] = app.ForceField._AtomType(typeName, '', 0.0, element)
-                    forcefield._atomTypes[typeName] = atomTypes[element]
+                formalCharge = formalCharges.get(atom.name, 0)
+                typeName = 'extra_'+element.symbol+'_'+str(formalCharge)
+                if (element, formalCharge) not in atomTypes:
+                    atomTypes[(element, formalCharge)] = app.ForceField._AtomType(typeName, '', 0.0, element)
+                    forcefield._atomTypes[typeName] = atomTypes[(element, formalCharge)]
                     if water:
                         # Select a reasonable vdW radius for this atom type.
 
@@ -1461,7 +1599,12 @@ class PDBFixer(object):
                             sigma = radii[element.symbol]
                         else:
                             sigma = 0.5
-                        nonbonded.registerAtom({'type':typeName, 'charge':'0', 'sigma':str(sigma), 'epsilon':'0'})
+                        nonbonded.registerAtom({
+                            'type':typeName,
+                            'charge':str(formalCharge),
+                            'sigma':str(sigma),
+                            'epsilon':'0'
+                        })
                 indexInResidue[atom.index] = len(template.atoms)
                 template.atoms.append(app.ForceField._TemplateAtomData(atom.name, typeName, element))
             for atom in residue.atoms():
