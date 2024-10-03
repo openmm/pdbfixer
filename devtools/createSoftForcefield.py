@@ -62,8 +62,9 @@ print(' </AtomTypes>')
 # Print the residue templates.
 
 print(' <Residues>')
+skipTemplates = ('ASH', 'CYM', 'GLH', 'HID', 'HIE', 'LYN')
 for template in forcefield._templates.values():
-    if template.name in ('ASH', 'CYM', 'GLH', 'HID', 'HIE', 'LYN'):
+    if template.name in skipTemplates or template.name[1:] in skipTemplates:
         continue
     print('  <Residue name="%s">' % template.name)
     atomIndex = {}
@@ -123,16 +124,11 @@ for torsion in torsions.proper:
             print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
         print('/>')
 for torsion in torsions.improper:
-    type1 = next(iter(torsion.types1))
-    type2 = next(iter(torsion.types2))
-    type3 = next(iter(torsion.types3))
-    type4 = next(iter(torsion.types4))
-    if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes and type4 not in omitTypes:
-        class1 = forcefield._atomTypes[type1].atomClass
-        class2 = forcefield._atomTypes[type2].atomClass
-        class3 = forcefield._atomTypes[type3].atomClass
-        class4 = forcefield._atomTypes[type4].atomClass
-        print('  <Improper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4), end=' ')
+    type = [next(iter(torsion.types1)), next(iter(torsion.types2)), next(iter(torsion.types3)), next(iter(torsion.types4))]
+    wildcard = [torsion.types1 == wildcardType, torsion.types2 == wildcardType, torsion.types3 == wildcardType, torsion.types4 == wildcardType]
+    if all(type[i] not in omitTypes or wildcard[i] for i in range(4)):
+        classes = tuple('' if wildcard[i] else forcefield._atomTypes[type[i]].atomClass for i in range(4))
+        print('  <Improper class1="%s" class2="%s" class3="%s" class4="%s"' % classes, end=' ')
         for i in range(len(torsion.k)):
             print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
         print('/>')

@@ -1523,56 +1523,6 @@
    <Bond from="2" to="4"/>
    <ExternalBond from="0"/>
   </Residue>
-  <Residue name="CHID">
-   <Atom name="N" type="477"/>
-   <Atom name="CA" type="479"/>
-   <Atom name="CB" type="481"/>
-   <Atom name="CG" type="483"/>
-   <Atom name="ND1" type="484"/>
-   <Atom name="CE1" type="486"/>
-   <Atom name="NE2" type="488"/>
-   <Atom name="CD2" type="489"/>
-   <Atom name="C" type="491"/>
-   <Atom name="O" type="492"/>
-   <Atom name="OXT" type="493"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <Bond from="8" to="10"/>
-   <ExternalBond from="0"/>
-  </Residue>
-  <Residue name="CHIE">
-   <Atom name="N" type="494"/>
-   <Atom name="CA" type="496"/>
-   <Atom name="CB" type="498"/>
-   <Atom name="CG" type="500"/>
-   <Atom name="ND1" type="501"/>
-   <Atom name="CE1" type="502"/>
-   <Atom name="NE2" type="504"/>
-   <Atom name="CD2" type="506"/>
-   <Atom name="C" type="508"/>
-   <Atom name="O" type="509"/>
-   <Atom name="OXT" type="510"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <Bond from="8" to="10"/>
-   <ExternalBond from="0"/>
-  </Residue>
   <Residue name="CHIP">
    <Atom name="N" type="511"/>
    <Atom name="CA" type="513"/>
@@ -2876,52 +2826,6 @@
   <Residue name="NHE">
    <Atom name="N" type="704"/>
    <ExternalBond from="0"/>
-  </Residue>
-  <Residue name="NHID">
-   <Atom name="N" type="816"/>
-   <Atom name="CA" type="818"/>
-   <Atom name="CB" type="820"/>
-   <Atom name="CG" type="822"/>
-   <Atom name="ND1" type="823"/>
-   <Atom name="CE1" type="825"/>
-   <Atom name="NE2" type="827"/>
-   <Atom name="CD2" type="828"/>
-   <Atom name="C" type="830"/>
-   <Atom name="O" type="831"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <ExternalBond from="8"/>
-  </Residue>
-  <Residue name="NHIE">
-   <Atom name="N" type="832"/>
-   <Atom name="CA" type="834"/>
-   <Atom name="CB" type="836"/>
-   <Atom name="CG" type="838"/>
-   <Atom name="ND1" type="839"/>
-   <Atom name="CE1" type="840"/>
-   <Atom name="NE2" type="842"/>
-   <Atom name="CD2" type="844"/>
-   <Atom name="C" type="846"/>
-   <Atom name="O" type="847"/>
-   <Bond from="0" to="1"/>
-   <Bond from="1" to="2"/>
-   <Bond from="1" to="8"/>
-   <Bond from="2" to="3"/>
-   <Bond from="3" to="4"/>
-   <Bond from="3" to="7"/>
-   <Bond from="4" to="5"/>
-   <Bond from="5" to="6"/>
-   <Bond from="6" to="7"/>
-   <Bond from="8" to="9"/>
-   <ExternalBond from="8"/>
   </Residue>
   <Residue name="NHIP">
    <Atom name="N" type="848"/>
@@ -4343,8 +4247,8 @@
   <Proper class1="" class2="C" class3="CB" class4=""  periodicity1="2" phase1="3.14159" k1="12.552" />
   <Proper class1="" class2="C" class3="CA" class4=""  periodicity1="2" phase1="3.14159" k1="15.167" />
   <Proper class1="" class2="C" class3="C" class4=""  periodicity1="2" phase1="3.14159" k1="15.167" />
-  <Improper class1="C5" class2="CA" class3="CA" class4="O"  periodicity1="2" phase1="3.14159" k1="43.932" />
-  <Improper class1="C6" class2="CA" class3="O2" class4="O2"  periodicity1="2" phase1="3.14159" k1="43.932" />
+  <Improper class1="C5" class2="" class3="" class4="O"  periodicity1="2" phase1="3.14159" k1="43.932" />
+  <Improper class1="C6" class2="" class3="O2" class4="O2"  periodicity1="2" phase1="3.14159" k1="43.932" />
   <Improper class1="N" class2="C5" class3="CT" class4="O"  periodicity1="2" phase1="3.14159" k1="4.6024" />
   <Improper class1="N" class2="C" class3="CT" class4="O"  periodicity1="2" phase1="3.14159" k1="4.6024" />
   <Improper class1="CA" class2="CA" class3="CA" class4="OH"  periodicity1="2" phase1="3.14159" k1="4.6024" />
@@ -4361,10 +4265,10 @@
   <Improper class1="C" class2="CT" class3="O" class4="OH"  periodicity1="2" phase1="3.14159" k1="43.932" />
   <Improper class1="N*" class2="C" class3="CM" class4="CT"  periodicity1="2" phase1="3.14159" k1="4.184" />
   <Improper class1="N*" class2="CB" class3="CK" class4="CT"  periodicity1="2" phase1="3.14159" k1="4.184" />
-  <Improper class1="N" class2="CA" class3="CT" class4="CT"  periodicity1="2" phase1="3.14159" k1="4.184" />
-  <Improper class1="CA" class2="CA" class3="N2" class4="N2"  periodicity1="2" phase1="3.14159" k1="43.932" />
-  <Improper class1="C" class2="CA" class3="O2" class4="O2"  periodicity1="2" phase1="3.14159" k1="43.932" />
-  <Improper class1="C" class2="CA" class3="CA" class4="O"  periodicity1="2" phase1="3.14159" k1="43.932" />
+  <Improper class1="N" class2="" class3="CT" class4="CT"  periodicity1="2" phase1="3.14159" k1="4.184" />
+  <Improper class1="CA" class2="" class3="N2" class4="N2"  periodicity1="2" phase1="3.14159" k1="43.932" />
+  <Improper class1="C" class2="" class3="O2" class4="O2"  periodicity1="2" phase1="3.14159" k1="43.932" />
+  <Improper class1="C" class2="" class3="" class4="O"  periodicity1="2" phase1="3.14159" k1="43.932" />
  </PeriodicTorsionForce>
  <Script>
 import openmm as mm
