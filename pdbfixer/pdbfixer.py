@@ -260,6 +260,25 @@ def _overlayPoints(points1, points2):
     (u, s, v) = lin.svd(R)
     return (-1*center2, np.dot(u, v).transpose(), center1)
 
+def _dihedralRotation(points, angle):
+    """Given four points that form a dihedral, compute the matrix that rotates the last point around the axis to
+    produce the desired dihedral angle."""
+    points = [p.value_in_unit(unit.nanometer) for p in points]
+    v0 = points[0]-points[1]
+    v1 = points[2]-points[1]
+    v2 = points[2]-points[3]
+    cp0 = np.cross(v0, v1)
+    cp1 = np.cross(v1, v2)
+    axis = v1/unit.norm(v1)
+    currentAngle = np.arctan2(np.dot(np.cross(cp0, cp1), axis), np.dot(cp0, cp1))
+    ct = np.cos(angle-currentAngle)
+    st = np.sin(angle-currentAngle)
+    return np.array([
+        [axis[0]*axis[0]*(1-ct) + ct,            axis[0]*axis[1]*(1-ct) - axis[2]*st,    axis[0]*axis[2]*(1-ct) + axis[1]*st],
+        [axis[1]*axis[0]*(1-ct) + axis[2]*st,    axis[1]*axis[1]*(1-ct) + ct,            axis[1]*axis[2]*(1-ct) - axis[0]*st],
+        [axis[2]*axis[0]*(1-ct) - axis[1]*st,    axis[2]*axis[1]*(1-ct) + axis[0]*st,    axis[2]*axis[2]*(1-ct) + ct        ]
+    ])
+
 def _findUnoccupiedDirection(point, positions):
     """Given a point in space and a list of atom positions, find the direction in which the local density of atoms is lowest."""
 
@@ -738,6 +757,10 @@ class PDBFixer(object):
 
         # Add the residues.
 
+        try:
+            prevResidue = list(chain.residues())[-1]
+        except:
+            prevResidue = None
         for i, residueName in enumerate(residueNames):
             template = self._getTemplate(residueName)
 
@@ -764,6 +787,22 @@ class PDBFixer(object):
                 newAtoms.append(newAtom)
                 templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
                 newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
+            if prevResidue is not None:
+                atoms1 = {atom.name: atom for atom in prevResidue.atoms()}
+                atoms2 = {atom.name: atom for atom in newResidue.atoms()}
+                if 'CA' in atoms1 and 'C' in atoms1 and 'N' in atoms2 and 'CA' in atoms2:
+
+                    # We're adding a peptide bond between this residue and the previous one.  Rotate it to try to
+                    # put the peptide bond into the trans conformation.
+
+                    atoms = (atoms1['CA'], atoms1['C'], atoms2['N'], atoms2['CA'])
+                    points = [newPositions[a.index] for a in atoms]
+                    rotation = _dihedralRotation(points, np.pi)
+                    for atom in newResidue.atoms():
+                        d = (newPositions[atom.index]-points[2]).value_in_unit(unit.nanometer)
+                        newPositions[atom.index] = mm.Vec3(*np.dot(rotation, d))*unit.nanometer + points[2]
+
+            prevResidue = newResidue
 
     def _renameNewChains(self, startIndex):
         """Rename newly added chains to conform with existing naming conventions.
