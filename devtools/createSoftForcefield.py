@@ -51,18 +51,21 @@ print(' <AtomTypes>')
 omitTypes = set()
 omitClasses = set()
 for atomType in forcefield._atomTypes:
-    (atomClass, mass, element) = forcefield._atomTypes[atomType]
-    if element is None or element == elem.hydrogen:
+    data = forcefield._atomTypes[atomType]
+    if data.element is None or data.element == elem.hydrogen:
         omitTypes.add(atomType)
-        omitClasses.add(atomClass)
+        omitClasses.add(data.atomClass)
     else:
-        print('  <Type name="%s" class="%s" element="%s" mass="%g"/>' % (atomType, atomClass, element.symbol, mass))
+        print('  <Type name="%s" class="%s" element="%s" mass="%g"/>' % (atomType, data.atomClass, data.element.symbol, data.mass))
 print(' </AtomTypes>')
 
 # Print the residue templates.
 
 print(' <Residues>')
+skipTemplates = ('ASH', 'CYM', 'GLH', 'HID', 'HIE', 'LYN')
 for template in forcefield._templates.values():
+    if template.name in skipTemplates or template.name[1:] in skipTemplates:
+        continue
     print('  <Residue name="%s">' % template.name)
     atomIndex = {}
     for i, atom in enumerate(template.atoms):
@@ -86,8 +89,8 @@ for i in range(len(bonds.types1)):
     type1 = next(iter(bonds.types1[i]))
     type2 = next(iter(bonds.types2[i]))
     if type1 not in omitTypes and type2 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
+        class1 = forcefield._atomTypes[type1].atomClass
+        class2 = forcefield._atomTypes[type2].atomClass
         print('  <Bond class1="%s" class2="%s" length="%g" k="%g"/>' % (class1, class2, bonds.length[i], bondK))
 print(' </HarmonicBondForce>')
 
@@ -100,9 +103,9 @@ for i in range(len(angles.types1)):
     type2 = next(iter(angles.types2[i]))
     type3 = next(iter(angles.types3[i]))
     if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
-        class3 = forcefield._atomTypes[type3][0]
+        class1 = forcefield._atomTypes[type1].atomClass
+        class2 = forcefield._atomTypes[type2].atomClass
+        class3 = forcefield._atomTypes[type3].atomClass
         print('  <Angle class1="%s" class2="%s" class3="%s" angle="%g" k="%g"/>' % (class1, class2, class3, angles.angle[i], angleK))
 print(' </HarmonicAngleForce>')
 
@@ -110,31 +113,22 @@ print(' </HarmonicAngleForce>')
 
 print(' <PeriodicTorsionForce>')
 torsions = [f for f in forcefield._forces if isinstance(f, ff.PeriodicTorsionGenerator)][0]
+wildcardType = forcefield._atomClasses['']
 for torsion in torsions.proper:
-    type1 = next(iter(torsion.types1))
-    type2 = next(iter(torsion.types2))
-    type3 = next(iter(torsion.types3))
-    type4= next(iter(torsion.types4))
-    if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes and type4 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
-        class3 = forcefield._atomTypes[type3][0]
-        class4 = forcefield._atomTypes[type4][0]
-        print('  <Proper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4), end=' ')
+    type = [next(iter(torsion.types1)), next(iter(torsion.types2)), next(iter(torsion.types3)), next(iter(torsion.types4))]
+    wildcard = [torsion.types1 == wildcardType, torsion.types2 == wildcardType, torsion.types3 == wildcardType, torsion.types4 == wildcardType]
+    if all(type[i] not in omitTypes or wildcard[i] for i in range(4)):
+        classes = tuple('' if wildcard[i] else forcefield._atomTypes[type[i]].atomClass for i in range(4))
+        print('  <Proper class1="%s" class2="%s" class3="%s" class4="%s"' % classes, end=' ')
         for i in range(len(torsion.k)):
             print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
         print('/>')
 for torsion in torsions.improper:
-    type1 = next(iter(torsion.types1))
-    type2 = next(iter(torsion.types2))
-    type3 = next(iter(torsion.types3))
-    type4= next(iter(torsion.types4))
-    if type1 not in omitTypes and type2 not in omitTypes and type3 not in omitTypes and type4 not in omitTypes:
-        class1 = forcefield._atomTypes[type1][0]
-        class2 = forcefield._atomTypes[type2][0]
-        class3 = forcefield._atomTypes[type3][0]
-        class4 = forcefield._atomTypes[type4][0]
-        print('  <Improper class1="%s" class2="%s" class3="%s" class4="%s"' % (class1, class2, class3, class4), end=' ')
+    type = [next(iter(torsion.types1)), next(iter(torsion.types2)), next(iter(torsion.types3)), next(iter(torsion.types4))]
+    wildcard = [torsion.types1 == wildcardType, torsion.types2 == wildcardType, torsion.types3 == wildcardType, torsion.types4 == wildcardType]
+    if all(type[i] not in omitTypes or wildcard[i] for i in range(4)):
+        classes = tuple('' if wildcard[i] else forcefield._atomTypes[type[i]].atomClass for i in range(4))
+        print('  <Improper class1="%s" class2="%s" class3="%s" class4="%s"' % classes, end=' ')
         for i in range(len(torsion.k)):
             print(' periodicity%d="%d" phase%d="%g" k%d="%g"' % (i+1, torsion.periodicity[i], i+1, torsion.phase[i], i+1, torsion.k[i]), end=' ')
         print('/>')
