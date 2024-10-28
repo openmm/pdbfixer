@@ -58,8 +58,6 @@ import os.path
 import math
 from collections import defaultdict
 
-from pkg_resources import resource_filename
-
 if sys.version_info >= (3,0):
     from urllib.request import urlopen
     from io import StringIO
@@ -327,7 +325,7 @@ class PDBFixer(object):
 
         Start from a filename.
 
-        >>> filename = resource_filename('pdbfixer', 'tests/data/test.pdb')
+        >>> filename = 'tests/data/test.pdb'
         >>> fixer = PDBFixer(filename=filename)
 
         Start from a file object.
