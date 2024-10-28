@@ -1542,7 +1542,7 @@ class PDBFixer(object):
         nChains = sum(1 for _ in self.topology.chains())
         modeller = app.Modeller(self.topology, self.positions)
         forcefield = self._createForceField(self.topology, True)
-        modeller.addMembrane(forcefield, lipidType=lipidType, minimumPadding=minimumPadding, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
+        modeller.addMembrane(forcefield, lipidType=lipidType, membraneCenterZ=membraneCenterZ, minimumPadding=minimumPadding, positiveIon=positiveIon, negativeIon=negativeIon, ionicStrength=ionicStrength)
         self.topology = modeller.topology
         self.positions = modeller.positions
         self._renameNewChains(nChains)
