@@ -1332,6 +1332,10 @@ class PDBFixer(object):
         keepWater : bool, optional, default=True
             If True, water molecules will not be removed.
 
+        Returns
+        -------
+        a list of Residue objects that were removed
+
         Examples
         --------
 
@@ -1355,6 +1359,7 @@ class PDBFixer(object):
         modeller.delete(toDelete)
         self.topology = modeller.topology
         self.positions = modeller.positions
+        return toDelete
 
     def addMissingHydrogens(self, pH=7.0, forcefield=None):
         """Add missing hydrogen atoms to the structure.
