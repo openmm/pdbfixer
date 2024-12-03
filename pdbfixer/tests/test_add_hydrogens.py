@@ -42,3 +42,10 @@ def test_registered_template():
         count = sum(1 for atom in residue.atoms() if atom.element.symbol == 'H')
         if residue.name == 'CAS':
             assert count == 9
+
+def test_end_caps():
+    """Test adding hydrogens to a chain capped with ACE and NME."""
+    fixer = pdbfixer.PDBFixer(filename=(Path(__file__).parent / "data" / "alanine-dipeptide.pdb").as_posix())
+    fixer.addMissingHydrogens()
+    forcefield = app.ForceField('amber14/protein.ff14SB.xml')
+    forcefield.createSystem(fixer.topology)
