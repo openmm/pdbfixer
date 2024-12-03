@@ -389,11 +389,13 @@ class PDBFixer(object):
         # Load the templates.
 
         self.templates = {}
+        self._standardTemplates = set()
         templatesPath = os.path.join(os.path.dirname(__file__), 'templates')
         for file in os.listdir(templatesPath):
             templatePdb = app.PDBFile(os.path.join(templatesPath, file))
             name = next(templatePdb.topology.residues()).name
             self.templates[name] = Template(templatePdb.topology, templatePdb.positions)
+            self._standardTemplates.add(name)
 
     def _initializeFromPDB(self, file):
         """Initialize this object by reading a PDB file."""
@@ -1413,7 +1415,7 @@ class PDBFixer(object):
 
     def _describeVariant(self, residue, definitions):
         """Build the variant description to pass to addHydrogens() for a residue."""
-        if residue.name not in app.PDBFile._standardResidues and self._getTemplate(residue.name) is not None:
+        if residue.name not in self._standardTemplates and self._getTemplate(residue.name) is not None:
             # The user has registered a template for this residue.  Use the hydrogens from it.
             template = self._getTemplate(residue.name)
             atoms = [(atom.name, atom.element.symbol.upper(), terminal) for atom, terminal in zip(template.topology.atoms(), template.terminal)]
