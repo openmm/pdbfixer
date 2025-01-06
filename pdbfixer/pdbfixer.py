@@ -150,10 +150,10 @@ class CCDResidueDefinition:
 
         residueName = block.getObj('chem_comp').getValue("id")
 
-        descriptorsData = block.getObj("pdbx_chem_comp_descriptor")
-        typeCol = descriptorsData.getAttributeIndex("type")
-
         atomData = block.getObj('chem_comp_atom')
+        if atomData is None:
+            # The file doesn't contain any atoms, so report that no definition is available.
+            return None
         atomNameCol = atomData.getAttributeIndex('atom_id')
         symbolCol = atomData.getAttributeIndex('type_symbol')
         leavingCol = atomData.getAttributeIndex('pdbx_leaving_atom_flag')
