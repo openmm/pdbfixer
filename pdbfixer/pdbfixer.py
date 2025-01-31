@@ -6,7 +6,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2013-2024 Stanford University and the Authors.
+Portions copyright (c) 2013-2025 Stanford University and the Authors.
 Authors: Peter Eastman
 Contributors:
 
@@ -295,7 +295,7 @@ class PDBFixer(object):
     """PDBFixer implements many tools for fixing problems in PDB and PDBx/mmCIF files.
     """
 
-    def __init__(self, filename=None, pdbfile=None, pdbxfile=None, url=None, pdbid=None):
+    def __init__(self, filename=None, pdbfile=None, pdbxfile=None, url=None, pdbid=None, platform=None):
         """Create a new PDBFixer instance to fix problems in a PDB or PDBx/mmCIF file.
 
         Parameters
@@ -315,6 +315,8 @@ class PDBFixer(object):
             at the file content.
         pdbid : str, optional, default=None
             A four-letter PDB code specifying the structure to be retrieved from the RCSB.
+        platform: openmm.Platform, optional, default=None
+            The Platform to use for running calculations.  If None, a Platform will be chosen automatically.
 
         Notes
         -----
@@ -347,6 +349,7 @@ class PDBFixer(object):
         if bool(filename) + bool(pdbfile) + bool(pdbxfile) + bool(url) + bool(pdbid) != 1:
             raise Exception("Exactly one option [filename, pdbfile, pdbxfile, url, pdbid] must be specified.")
 
+        self.platform = platform
         self.source = None
         if pdbid:
             # A PDB id has been specified.
@@ -1280,7 +1283,10 @@ class PDBFixer(object):
             integrator = mm.LangevinIntegrator(300*unit.kelvin, 10/unit.picosecond, 5*unit.femtosecond)
             if seed is not None:
                 integrator.setRandomNumberSeed(seed)
-            context = mm.Context(system, integrator)
+            if self.platform is None:
+                context = mm.Context(system, integrator)
+            else:
+                context = mm.Context(system, integrator, self.platform)
             context.setPositions(newPositions)
             mm.LocalEnergyMinimizer.minimize(context)
             state = context.getState(getPositions=True)
@@ -1389,7 +1395,7 @@ class PDBFixer(object):
         extraDefinitions = self._downloadNonstandardDefinitions()
         variants = [self._describeVariant(res, extraDefinitions) for res in self.topology.residues()]
         modeller = app.Modeller(self.topology, self.positions)
-        modeller.addHydrogens(pH=pH, forcefield=forcefield, variants=variants)
+        modeller.addHydrogens(pH=pH, forcefield=forcefield, variants=variants, platform=self.platform)
         self.topology = modeller.topology
         self.positions = modeller.positions
 
