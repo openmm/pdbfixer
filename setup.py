@@ -34,7 +34,7 @@ from setuptools import setup, find_packages
 DOCLINES = __doc__.split("\n")
 
 ########################
-__version__ = '1.10.0'
+__version__ = '1.11.0'
 VERSION = __version__
 ISRELEASED = False
 ########################
