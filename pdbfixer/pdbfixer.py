@@ -169,7 +169,7 @@ class CCDResidueDefinition:
                 symbol=row[symbolCol],
                 leaving=row[leavingCol] == 'Y',
                 coords=mm.Vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1,
-                charge=row[chargeCol],
+                charge=row[chargeCol] if row[chargeCol] != "?" else 0,
                 aromatic=row[aromaticCol] == 'Y'
             ) for row in atomData.getRowList()
         ]
@@ -1638,9 +1638,6 @@ class PDBFixer(object):
             for atom in residue.atoms():
                 element = atom.element
                 formalCharge = formalCharges.get(atom.name, 0)
-                if formalCharge == "?":
-                    # Zero the charge if they're not known.
-                    formalCharge = 0
                 typeName = 'extra_'+element.symbol+'_'+str(formalCharge)
                 if (element, formalCharge) not in atomTypes:
                     atomTypes[(element, formalCharge)] = app.ForceField._AtomType(typeName, '', 0.0, element)
