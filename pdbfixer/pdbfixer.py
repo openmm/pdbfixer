@@ -169,7 +169,7 @@ class CCDResidueDefinition:
                 symbol=row[symbolCol],
                 leaving=row[leavingCol] == 'Y',
                 coords=mm.Vec3(float(row[xCol]), float(row[yCol]), float(row[zCol]))*0.1,
-                charge=row[chargeCol],
+                charge=row[chargeCol] if row[chargeCol] != "?" else 0,
                 aromatic=row[aromaticCol] == 'Y'
             ) for row in atomData.getRowList()
         ]
