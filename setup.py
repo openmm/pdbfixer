@@ -74,6 +74,6 @@ setup(
     packages=find_packages(),
     package_data={'pdbfixer': find_package_data()},
     zip_safe=False,
-    install_requires=['numpy', 'openmm >= 8.2'],
+    install_requires=['numpy', 'openmm >= 8.2', 'legacy-cgi'],
     entry_points={'console_scripts': ['pdbfixer = pdbfixer.pdbfixer:main']})
 
