@@ -289,6 +289,14 @@ def _findUnoccupiedDirection(point, positions):
     direction /= unit.norm(direction)
     return direction
 
+def _findOXTPosition(atomPositions: dict[str, mm.Vec3]) -> mm.Vec3:
+    """Given CA, C, and O positions, compute the position of the OXT atom."""
+    d_ca_o = atomPositions['O'] - atomPositions['CA']
+    d_ca_c = atomPositions['C'] - atomPositions['CA']
+    d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
+    v = d_ca_o - d_ca_c*unit.dot(d_ca_c, d_ca_o)
+    return atomPositions['O'] - 2*v
+
 class PDBFixer(object):
     """PDBFixer implements many tools for fixing problems in PDB and PDBx/mmCIF files.
     """
@@ -710,11 +718,7 @@ class PDBFixer(object):
                     if 'OXT' in terminalsToAdd:
                         newAtom = newTopology.addAtom('OXT', oxygen, newResidue)
                         newAtoms.append(newAtom)
-                        d_ca_o = atomPositions['O']-atomPositions['CA']
-                        d_ca_c = atomPositions['C']-atomPositions['CA']
-                        d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
-                        v = d_ca_o - d_ca_c*unit.dot(d_ca_c, d_ca_o)
-                        newPositions.append((atomPositions['O']+2*v)*unit.nanometer)
+                        newPositions.append(_findOXTPosition(atomPositions)*unit.nanometer)
         newTopology.setUnitCellDimensions(self.topology.getUnitCellDimensions())
         newTopology.createStandardBonds()
         newTopology.createDisulfideBonds(newPositions)
