@@ -1,18 +1,26 @@
-from openmm import Vec3
-from pytest import approx
+from pathlib import Path
 
-from pdbfixer.pdbfixer import _findOXTPosition
+from openmm import app, unit
 
-ATOM_POSITIONS_ALA = {
-    "N": Vec3(-0.966, 0.493, 1.500),
-    "CA": Vec3(0.257, 0.418, 0.692),
-    "C": Vec3(-0.094, 0.017, -0.716),
-    "O": Vec3(-1.056, -0.682, -0.923),
-    "CB": Vec3(1.204, -0.620, 1.296),
-    "OXT": Vec3(0.586, 0.394, -1.639),
-}
+import pdbfixer
 
 
 def test_findOXTPosition():
-    pos_oxt = _findOXTPosition(ATOM_POSITIONS_ALA)
-    assert pos_oxt == approx(ATOM_POSITIONS_ALA["OXT"], abs=1e-3)
+    """Test that OXT is added at the correct position."""
+    fixer = pdbfixer.PDBFixer(filename=(Path(__file__).parent / "data" / "1BHL.pdb").as_posix())
+
+    # Record the original position of OXT, then delete it.
+
+    originalPos = [pos for pos, atom in zip(fixer.positions, fixer.topology.atoms()) if atom.name == "OXT"]
+    modeller = app.Modeller(fixer.topology, fixer.positions)
+    modeller.delete([atom for atom in modeller.topology.atoms() if atom.name == "OXT"])
+    fixer.topology = modeller.topology
+    fixer.positions = modeller.positions
+
+    # Have PDBFixer add it back and make sure it is sufficiently close to the original position.
+
+    fixer.missingResidues = {}
+    fixer.findMissingAtoms()
+    fixer.addMissingAtoms()
+    newPos = [pos for pos, atom in zip(fixer.positions, fixer.topology.atoms()) if atom.name == "OXT"]
+    assert unit.norm(newPos[0] - originalPos[0]) < 0.01 * unit.nanometer
