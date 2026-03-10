@@ -714,7 +714,7 @@ class PDBFixer(object):
                         d_ca_c = atomPositions['C']-atomPositions['CA']
                         d_ca_c /= unit.sqrt(unit.dot(d_ca_c, d_ca_c))
                         v = d_ca_o - d_ca_c*unit.dot(d_ca_c, d_ca_o)
-                        newPositions.append((atomPositions['O']+2*v)*unit.nanometer)
+                        newPositions.append((atomPositions['O']-2*v)*unit.nanometer)
         newTopology.setUnitCellDimensions(self.topology.getUnitCellDimensions())
         newTopology.createStandardBonds()
         newTopology.createDisulfideBonds(newPositions)
