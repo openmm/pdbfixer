@@ -275,6 +275,61 @@ def _dihedralRotation(points, angle):
         [axis[2]*axis[0]*(1-ct) - axis[1]*st,    axis[2]*axis[1]*(1-ct) + axis[0]*st,    axis[2]*axis[2]*(1-ct) + ct        ]
     ])
 
+def _placeAtomNeRF(a1, a2, a3, bond_length, bond_angle, dihedral):
+    """Place atom X bonded to a3 using the NeRF algorithm (Parsons et al. 2005).
+
+    Given three reference points a1, a2, a3, compute the position of X such that
+    dist(a3, X) = bond_length, angle(a2, a3, X) = bond_angle, and
+    dihedral(a1, a2, a3, X) = dihedral.
+
+    All lengths in nanometers, angles in radians.
+    """
+    bc = a3 - a2
+    bc_hat = bc / np.linalg.norm(bc)
+    ab = a2 - a1
+    n = np.cross(ab, bc)
+    norm_n = np.linalg.norm(n)
+    if norm_n < 1e-10:
+        raise ValueError(
+            "Reference points a1, a2, a3 are collinear; cannot define a NeRF frame.")
+    n_hat = n / norm_n
+    m = np.cross(n_hat, bc_hat)
+    d = np.array([
+        -bond_length * np.cos(bond_angle),
+        bond_length * np.sin(bond_angle) * np.cos(dihedral),
+        bond_length * np.sin(bond_angle) * np.sin(dihedral),
+    ])
+    return a3 + d[0] * bc_hat + d[1] * m + d[2] * n_hat
+
+def _buildAceCap(n, ca, c):
+    """Build ACE cap positions from the adjacent residue's N, CA, C (in nm).
+
+    Returns dict mapping atom name to numpy position array.
+    Atom names match ACE.pdb template: C, O, CH3.
+
+    Bond lengths and angles from Engh & Huber (1991), Acta Cryst. A47, 392-400;
+    tabulated at https://www.ebi.ac.uk/thornton-srv/software/PROCHECK/manual/manappa.html
+    CH3-C uses the CA-C value (both sp3 C bonded to carbonyl C).
+    """
+    ace_c = _placeAtomNeRF(c, ca, n, 0.1329, 2.124, np.pi)     # C-N 1.329 A, C-N-CA 121.7 deg
+    ch3   = _placeAtomNeRF(ca, n, ace_c, 0.1525, 2.028, np.pi)  # ~CA-C 1.525 A, CA-C-N 116.2 deg
+    o     = _placeAtomNeRF(ca, n, ace_c, 0.1231, 2.147, 0.0)    # C=O 1.231 A, O-C-N 123.0 deg
+    return {'C': ace_c, 'O': o, 'CH3': ch3}
+
+def _buildNmeCap(n, ca, c):
+    """Build NME cap positions from the adjacent residue's N, CA, C (in nm).
+
+    Returns dict mapping atom name to numpy position array.
+    Atom names match NME.pdb template: N, C.
+
+    Bond lengths and angles from Engh & Huber (1991), Acta Cryst. A47, 392-400;
+    tabulated at https://www.ebi.ac.uk/thornton-srv/software/PROCHECK/manual/manappa.html
+    N-CH3 uses the N-CA value (both sp3 C bonded to amide N).
+    """
+    nme_n = _placeAtomNeRF(n, ca, c, 0.1329, 2.028, np.pi)     # C-N 1.329 A, CA-C-N 116.2 deg
+    ch3   = _placeAtomNeRF(ca, c, nme_n, 0.1458, 2.124, np.pi)  # ~N-CA 1.458 A, C-N-CA 121.7 deg
+    return {'N': nme_n, 'C': ch3}
+
 def _findUnoccupiedDirection(point, positions):
     """Given a point in space and a list of atom positions, find the direction in which the local density of atoms is lowest."""
 
@@ -765,43 +820,77 @@ class PDBFixer(object):
         for i, residueName in enumerate(residueNames):
             template = self._getTemplate(residueName)
 
-            # Find a translation that best matches the adjacent residue.
+            if residueName == 'ACE' and all(k in orientToPositions for k in ('N', 'CA', 'C')):
+                # Use NeRF placement for ACE cap.  Requires N, CA, C on the
+                # adjacent residue; falls back to Kabsch overlay if any are missing.
+                refN  = np.array(orientToPositions['N'].value_in_unit(unit.nanometer))
+                refCA = np.array(orientToPositions['CA'].value_in_unit(unit.nanometer))
+                refC  = np.array(orientToPositions['C'].value_in_unit(unit.nanometer))
+                capPositions = _buildAceCap(refN, refCA, refC)
+                newResidue = chain.topology.addResidue(residueName, chain,
+                    "%d" % ((firstIndex+i)%10000))
+                for atom in template.topology.atoms():
+                    newAtom = chain.topology.addAtom(atom.name, atom.element, newResidue)
+                    newAtoms.append(newAtom)
+                    newPositions.append(mm.Vec3(*capPositions[atom.name])*unit.nanometer)
 
-            points1 = []
-            points2 = []
-            for atom in template.topology.atoms():
-                if atom.name in orientToPositions:
-                    points1.append(orientToPositions[atom.name].value_in_unit(unit.nanometer))
-                    points2.append(template.positions[atom.index].value_in_unit(unit.nanometer))
-            (translate2, rotate, translate1) = _overlayPoints(points1, points2)
+            elif residueName == 'NME' and prevResidue is not None and \
+                    all(k in {a.name for a in prevResidue.atoms()} for k in ('N', 'CA', 'C')):
+                # Use NeRF placement for NME cap.  Requires N, CA, C on the
+                # previous residue; falls back to Kabsch overlay if any are missing.
+                prevAtoms = {a.name: a for a in prevResidue.atoms()}
+                refN  = np.array(newPositions[prevAtoms['N'].index].value_in_unit(unit.nanometer))
+                refCA = np.array(newPositions[prevAtoms['CA'].index].value_in_unit(unit.nanometer))
+                refC  = np.array(newPositions[prevAtoms['C'].index].value_in_unit(unit.nanometer))
+                capPositions = _buildNmeCap(refN, refCA, refC)
+                newResidue = chain.topology.addResidue(residueName, chain,
+                    "%d" % ((firstIndex+i)%10000))
+                for atom in template.topology.atoms():
+                    newAtom = chain.topology.addAtom(atom.name, atom.element, newResidue)
+                    newAtoms.append(newAtom)
+                    newPositions.append(mm.Vec3(*capPositions[atom.name])*unit.nanometer)
 
-            # Create the new residue.
+            else:
+                # Standard residue (or cap missing backbone reference atoms):
+                # use Kabsch overlay + arc placement.
 
-            newResidue = chain.topology.addResidue(residueName, chain, "%d" % ((firstIndex+i)%10000))
-            fraction = (i+1.0)/(numResidues+1.0)
-            translate = startPosition + (endPosition-startPosition)*fraction + loopHeight*math.sin(fraction*math.pi)*loopDirection
-            templateAtoms = list(template.topology.atoms())
-            if newResidue == next(chain.residues()):
-                templateAtoms = [atom for atom in templateAtoms if atom.name not in ('P', 'OP1', 'OP2')]
-            for atom in templateAtoms:
-                newAtom = chain.topology.addAtom(atom.name, atom.element, newResidue)
-                newAtoms.append(newAtom)
-                templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
-                newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
-            if prevResidue is not None:
-                atoms1 = {atom.name: atom for atom in prevResidue.atoms()}
-                atoms2 = {atom.name: atom for atom in newResidue.atoms()}
-                if 'CA' in atoms1 and 'C' in atoms1 and 'N' in atoms2 and 'CA' in atoms2:
+                # Find a translation that best matches the adjacent residue.
 
-                    # We're adding a peptide bond between this residue and the previous one.  Rotate it to try to
-                    # put the peptide bond into the trans conformation.
+                points1 = []
+                points2 = []
+                for atom in template.topology.atoms():
+                    if atom.name in orientToPositions:
+                        points1.append(orientToPositions[atom.name].value_in_unit(unit.nanometer))
+                        points2.append(template.positions[atom.index].value_in_unit(unit.nanometer))
+                (translate2, rotate, translate1) = _overlayPoints(points1, points2)
 
-                    atoms = (atoms1['CA'], atoms1['C'], atoms2['N'], atoms2['CA'])
-                    points = [newPositions[a.index] for a in atoms]
-                    rotation = _dihedralRotation(points, np.pi)
-                    for atom in newResidue.atoms():
-                        d = (newPositions[atom.index]-points[2]).value_in_unit(unit.nanometer)
-                        newPositions[atom.index] = mm.Vec3(*np.dot(rotation, d))*unit.nanometer + points[2]
+                # Create the new residue.
+
+                newResidue = chain.topology.addResidue(residueName, chain, "%d" % ((firstIndex+i)%10000))
+                fraction = (i+1.0)/(numResidues+1.0)
+                translate = startPosition + (endPosition-startPosition)*fraction + loopHeight*math.sin(fraction*math.pi)*loopDirection
+                templateAtoms = list(template.topology.atoms())
+                if newResidue == next(chain.residues()):
+                    templateAtoms = [atom for atom in templateAtoms if atom.name not in ('P', 'OP1', 'OP2')]
+                for atom in templateAtoms:
+                    newAtom = chain.topology.addAtom(atom.name, atom.element, newResidue)
+                    newAtoms.append(newAtom)
+                    templatePosition = template.positions[atom.index].value_in_unit(unit.nanometer)
+                    newPositions.append(mm.Vec3(*np.dot(rotate, templatePosition))*unit.nanometer+translate)
+                if prevResidue is not None:
+                    atoms1 = {atom.name: atom for atom in prevResidue.atoms()}
+                    atoms2 = {atom.name: atom for atom in newResidue.atoms()}
+                    if 'CA' in atoms1 and 'C' in atoms1 and 'N' in atoms2 and 'CA' in atoms2:
+
+                        # We're adding a peptide bond between this residue and the previous one.  Rotate it to try to
+                        # put the peptide bond into the trans conformation.
+
+                        atoms = (atoms1['CA'], atoms1['C'], atoms2['N'], atoms2['CA'])
+                        points = [newPositions[a.index] for a in atoms]
+                        rotation = _dihedralRotation(points, np.pi)
+                        for atom in newResidue.atoms():
+                            d = (newPositions[atom.index]-points[2]).value_in_unit(unit.nanometer)
+                            newPositions[atom.index] = mm.Vec3(*np.dot(rotation, d))*unit.nanometer + points[2]
 
             prevResidue = newResidue
 
