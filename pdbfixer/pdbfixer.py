@@ -1731,6 +1731,10 @@ def main():
         if options.residues:
             if options.verbose: print('Finding missing residues...')
             fixer.findMissingResidues()
+            for residueNames in fixer.missingResidues.values():
+                for residueName in residueNames:
+                    if residueName not in fixer.templates:
+                        raise(KeyError("Cannot find residue %s in template library!" % residueName))
         else:
             fixer.missingResidues = {}
         if options.nonstandard:
