@@ -54,7 +54,8 @@ import sys
 import os
 import os.path
 import math
-from collections import defaultdict
+import warnings
+from collections import Counter, defaultdict
 
 if sys.version_info >= (3,0):
     from urllib.request import urlopen
@@ -255,6 +256,92 @@ def _overlayPoints(points1, points2):
 
     (u, s, v) = lin.svd(R)
     return (-1*center2, np.dot(u, v).transpose(), center1)
+
+def _alignResiduesToSequence(residues, sequence):
+    """Determine which element of a SEQRES sequence each residue in a chain corresponds to.
+
+    Residue numbers cannot be used for this, because many numbering conventions (Kabat and EU for
+    antibodies, IMGT, and so on) skip numbers without any residue being absent, and use insertion
+    codes so that several residues share a number.  This instead aligns the list of residues to the
+    sequence, which is unaffected by how the depositor chose to number them.
+
+    Every residue must be matched to an element of the sequence with the same name, and the matches
+    must be in increasing order.  The elements of the sequence that are left over are the missing
+    residues.  Their total number is fixed, so only their positions are in question.  We therefore
+    minimize the number of separate gaps, which prefers a few continuous missing loops over many
+    scattered single residues, and prefer to open gaps at points where the residue numbers are
+    discontinuous, since that is where the depositor has told us residues are absent.
+
+    Parameters
+    ----------
+    residues (list of Residue) - the residues of a chain, in the order they appear in it
+    sequence (list of string) - the names of the residues in the sequence, from a SEQRES record
+
+    Returns
+    -------
+    A list containing, for each residue, the index within the sequence it corresponds to, or None if
+    the residues cannot be aligned to the sequence.
+
+    """
+    numResidues = len(residues)
+    numSequence = len(sequence)
+    if numResidues == 0 or numResidues > numSequence:
+        return None
+
+    # Compute the cost of opening a gap before each residue.  Gaps are cheaper where the residue
+    # numbers are discontinuous, and at the two ends of the chain.
+
+    gapCost = [1.0]*(numResidues+1)
+    gapCost[0] = 0.5
+    gapCost[numResidues] = 0.5
+    for i in range(1, numResidues):
+        try:
+            discontinuous = int(residues[i].id) > int(residues[i-1].id)+1
+        except (TypeError, ValueError):
+            discontinuous = False
+        if discontinuous:
+            gapCost[i] = 0.2
+
+    # Fill in a dynamic programming table.  scores[i][j] is the best score for aligning the first i+1
+    # residues, with residue i matched to element j of the sequence.  Because a gap may span any
+    # number of elements, the alternative to matching consecutive elements is the running maximum of
+    # the previous row, which numpy can compute for a whole row at once.
+
+    names = np.array(sequence, dtype=object)
+    impossible = -1e9
+    scores = np.full((numResidues, numSequence), impossible)
+    leadingGap = np.full(numSequence, gapCost[0])
+    leadingGap[0] = 0.0
+    scores[0] = np.where(names == residues[0].name, -leadingGap, impossible)
+    for i in range(1, numResidues):
+        previous = scores[i-1]
+        gap = np.full(numSequence, impossible)
+        gap[2:] = np.maximum.accumulate(previous[:-2])-gapCost[i]
+        match = np.full(numSequence, impossible)
+        match[1:] = previous[:-1]
+        scores[i] = np.where(names == residues[i].name, np.maximum(gap, match), impossible)
+        scores[i][:i] = impossible
+
+    # Find the best element for the last residue, allowing for a gap after it, then trace backwards
+    # to recover the alignment.  At each step we recompute the two alternatives the forward pass
+    # chose between, preferring to match consecutive elements when they are equally good.
+
+    final = scores[numResidues-1]-gapCost[numResidues]
+    final[numSequence-1] += gapCost[numResidues]
+    j = int(np.argmax(final))
+    if final[j] <= impossible/2:
+        return None
+    alignment = [0]*numResidues
+    for i in range(numResidues-1, 0, -1):
+        alignment[i] = j
+        previous = scores[i-1]
+        gapFrom = int(np.argmax(previous[:j-1])) if j > 1 else -1
+        if gapFrom >= 0 and previous[gapFrom]-gapCost[i] > previous[j-1]:
+            j = gapFrom
+        else:
+            j -= 1
+    alignment[0] = j
+    return alignment
 
 def _dihedralRotation(points, angle):
     """Given four points that form a dihedral, compute the matrix that rotates the last point around the axis to
@@ -887,52 +974,59 @@ class PDBFixer(object):
 
         """
         chains = [c for c in self.topology.chains() if len(list(c.residues())) > 0]
-        chainWithGaps = {}
+        chainResidues = dict((chain, list(chain.residues())) for chain in chains)
 
-        # Find the sequence of each chain, with gaps for missing residues.
-
-        for chain in chains:
-            residues = list(chain.residues())
-            ids = [int(r.id) for r in residues]
-            for i, res in enumerate(residues):
-                if res.insertionCode not in ('', ' '):
-                    for j in range(i, len(residues)):
-                        ids[j] += 1
-            minResidue = min(ids)
-            maxResidue = max(ids)
-            chainWithGaps[chain] = [None]*(maxResidue-minResidue+1)
-            for r, id in zip(residues, ids):
-                chainWithGaps[chain][id-minResidue] = r.name
-
-        # Try to find the chain that matches each sequence.
+        # Try to find the chain that matches each sequence.  Chain IDs are not unique, so a sequence
+        # may match more than one chain.  We consider the sequences in the order they appeared in the
+        # file and assign each one to the first chain it aligns to, which avoids a short chain of
+        # ligands or waters claiming the sequence of a polymer that shares its ID.
 
         chainSequence = {}
-        chainOffset = {}
+        chainAlignment = {}
         for sequence in self.sequences:
             for chain in chains:
                 if chain.id != sequence.chainId:
                     continue
                 if chain in chainSequence:
                     continue
-                for offset in range(len(sequence.residues)-len(chainWithGaps[chain])+1):
-                    if all(a == b or b == None for a,b in zip(sequence.residues[offset:], chainWithGaps[chain])):
-                        chainSequence[chain] = sequence
-                        chainOffset[chain] = offset
-                        break
-                if chain in chainSequence:
+                alignment = _alignResiduesToSequence(chainResidues[chain], sequence.residues)
+                if alignment is not None:
+                    chainSequence[chain] = sequence
+                    chainAlignment[chain] = alignment
+                    break
+
+        # Warn about any chain we could not align even though it contains exactly the residues one of
+        # the sequences says it should, just in an order we could not match.  That indicates a problem
+        # we ought to have been able to solve, and it would otherwise silently leave the chain with
+        # its gaps unfilled.  We stay silent when the names themselves disagree, since that means the
+        # structure genuinely does not contain the residues the sequence lists, as happens after
+        # applyMutations() has renamed one.
+
+        for chain in chains:
+            if chain in chainSequence:
+                continue
+            names = Counter(r.name for r in chainResidues[chain])
+            for sequence in self.sequences:
+                if sequence.chainId != chain.id:
+                    continue
+                if not (names-Counter(sequence.residues)):
+                    warnings.warn('Unable to align chain %s (%d residues) to its sequence.  Missing '
+                                  'residues will not be added to it.' % (chain.id, len(chainResidues[chain])))
                     break
 
         # Now build the list of residues to add.
 
         self.missingResidues = {}
-        for chain in self.topology.chains():
+        for chain in chains:
             if chain in chainSequence:
-                offset = chainOffset[chain]
                 sequence = chainSequence[chain].residues
-                gappedSequence = chainWithGaps[chain]
+                alignment = chainAlignment[chain]
+                aligned = set(alignment)
                 index = 0
                 for i in range(len(sequence)):
-                    if i < offset or i >= len(gappedSequence)+offset or gappedSequence[i-offset] is None:
+                    if i in aligned:
+                        index += 1
+                    else:
                         key = (chain.index, index)
                         if key not in self.missingResidues:
                             self.missingResidues[key] = []
@@ -940,8 +1034,6 @@ class PDBFixer(object):
                         if residueName in substitutions:
                             residueName = substitutions[sequence[i]]
                         self.missingResidues[key].append(residueName)
-                    else:
-                        index += 1
 
     def findNonstandardResidues(self):
         """Identify non-standard residues found in the structure, and select standard residues to replace them with.

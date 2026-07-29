@@ -1,0 +1,57 @@
+HEADER    TEST STRUCTURE WITH INSERTION CODES     01-JAN-00   TEST
+TITLE     SYNTHETIC CHAIN FOR TESTING SEQUENCE ALIGNMENT
+SEQRES   1 H   14  ALA CYS ASP GLU PHE GLY HIS ILE LYS LEU MET ASN PRO
+SEQRES   2 H   14  GLN
+REMARK 465   M RES C SSSEQI
+REMARK 465     ASP H    53
+REMARK 465     GLU H    54
+ATOM      1  N   ALA H  51      -1.200   0.000   0.000  1.00 20.00           N
+ATOM      2  CA  ALA H  51       0.000   0.000   0.000  1.00 20.00           C
+ATOM      3  C   ALA H  51       1.200   0.400   0.000  1.00 20.00           C
+ATOM      4  O   ALA H  51       1.400   1.600   0.000  1.00 20.00           O
+ATOM      5  N   CYS H  52       2.600   0.000   0.000  1.00 20.00           N
+ATOM      6  CA  CYS H  52       3.800   0.000   0.000  1.00 20.00           C
+ATOM      7  C   CYS H  52       5.000   0.400   0.000  1.00 20.00           C
+ATOM      8  O   CYS H  52       5.200   1.600   0.000  1.00 20.00           O
+ATOM      9  N   PHE H  55       6.400   0.000   0.000  1.00 20.00           N
+ATOM     10  CA  PHE H  55       7.600   0.000   0.000  1.00 20.00           C
+ATOM     11  C   PHE H  55       8.800   0.400   0.000  1.00 20.00           C
+ATOM     12  O   PHE H  55       9.000   1.600   0.000  1.00 20.00           O
+ATOM     13  N   GLY H  56      10.200   0.000   0.000  1.00 20.00           N
+ATOM     14  CA  GLY H  56      11.400   0.000   0.000  1.00 20.00           C
+ATOM     15  C   GLY H  56      12.600   0.400   0.000  1.00 20.00           C
+ATOM     16  O   GLY H  56      12.800   1.600   0.000  1.00 20.00           O
+ATOM     17  N   HIS H  56A     14.000   0.000   0.000  1.00 20.00           N
+ATOM     18  CA  HIS H  56A     15.200   0.000   0.000  1.00 20.00           C
+ATOM     19  C   HIS H  56A     16.400   0.400   0.000  1.00 20.00           C
+ATOM     20  O   HIS H  56A     16.600   1.600   0.000  1.00 20.00           O
+ATOM     21  N   ILE H  56B     17.800   0.000   0.000  1.00 20.00           N
+ATOM     22  CA  ILE H  56B     19.000   0.000   0.000  1.00 20.00           C
+ATOM     23  C   ILE H  56B     20.200   0.400   0.000  1.00 20.00           C
+ATOM     24  O   ILE H  56B     20.400   1.600   0.000  1.00 20.00           O
+ATOM     25  N   LYS H  57      21.600   0.000   0.000  1.00 20.00           N
+ATOM     26  CA  LYS H  57      22.800   0.000   0.000  1.00 20.00           C
+ATOM     27  C   LYS H  57      24.000   0.400   0.000  1.00 20.00           C
+ATOM     28  O   LYS H  57      24.200   1.600   0.000  1.00 20.00           O
+ATOM     29  N   LEU H  60      25.400   0.000   0.000  1.00 20.00           N
+ATOM     30  CA  LEU H  60      26.600   0.000   0.000  1.00 20.00           C
+ATOM     31  C   LEU H  60      27.800   0.400   0.000  1.00 20.00           C
+ATOM     32  O   LEU H  60      28.000   1.600   0.000  1.00 20.00           O
+ATOM     33  N   MET H  61      29.200   0.000   0.000  1.00 20.00           N
+ATOM     34  CA  MET H  61      30.400   0.000   0.000  1.00 20.00           C
+ATOM     35  C   MET H  61      31.600   0.400   0.000  1.00 20.00           C
+ATOM     36  O   MET H  61      31.800   1.600   0.000  1.00 20.00           O
+ATOM     37  N   ASN H  62      33.000   0.000   0.000  1.00 20.00           N
+ATOM     38  CA  ASN H  62      34.200   0.000   0.000  1.00 20.00           C
+ATOM     39  C   ASN H  62      35.400   0.400   0.000  1.00 20.00           C
+ATOM     40  O   ASN H  62      35.600   1.600   0.000  1.00 20.00           O
+ATOM     41  N   PRO H  63      36.800   0.000   0.000  1.00 20.00           N
+ATOM     42  CA  PRO H  63      38.000   0.000   0.000  1.00 20.00           C
+ATOM     43  C   PRO H  63      39.200   0.400   0.000  1.00 20.00           C
+ATOM     44  O   PRO H  63      39.400   1.600   0.000  1.00 20.00           O
+ATOM     45  N   GLN H  64      40.600   0.000   0.000  1.00 20.00           N
+ATOM     46  CA  GLN H  64      41.800   0.000   0.000  1.00 20.00           C
+ATOM     47  C   GLN H  64      43.000   0.400   0.000  1.00 20.00           C
+ATOM     48  O   GLN H  64      43.200   1.600   0.000  1.00 20.00           O
+TER      49      GLN H  64 
+END

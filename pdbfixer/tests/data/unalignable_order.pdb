@@ -1,0 +1,16 @@
+HEADER    TEST STRUCTURE THAT CANNOT BE ALIGNED    01-JAN-00   TST2
+SEQRES   1 A    4  ALA CYS ASP GLU
+ATOM      1  N   ALA A   1      -1.200   0.000   0.000  1.00 20.00           N
+ATOM      2  CA  ALA A   1       0.000   0.000   0.000  1.00 20.00           C
+ATOM      3  C   ALA A   1       1.200   0.400   0.000  1.00 20.00           C
+ATOM      4  O   ALA A   1       1.400   1.600   0.000  1.00 20.00           O
+ATOM      5  N   ASP A   2       2.600   0.000   0.000  1.00 20.00           N
+ATOM      6  CA  ASP A   2       3.800   0.000   0.000  1.00 20.00           C
+ATOM      7  C   ASP A   2       5.000   0.400   0.000  1.00 20.00           C
+ATOM      8  O   ASP A   2       5.200   1.600   0.000  1.00 20.00           O
+ATOM      9  N   CYS A   3       6.400   0.000   0.000  1.00 20.00           N
+ATOM     10  CA  CYS A   3       7.600   0.000   0.000  1.00 20.00           C
+ATOM     11  C   CYS A   3       8.800   0.400   0.000  1.00 20.00           C
+ATOM     12  O   CYS A   3       9.000   1.600   0.000  1.00 20.00           O
+TER      13      CYS A   3
+END
