@@ -1758,9 +1758,12 @@ def main():
                 negativeIon=options.negativeIon, ionicStrength=options.ionic*unit.molar)
         with open(options.output, 'w') as f:
             if options.verbose: print('Writing output...')
-            if fixer.source is not None:
-                f.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
-            app.PDBFile.writeFile(fixer.topology, fixer.positions, f, True)
+            if os.path.splitext(options.output)[1].lower() == '.cif':
+                app.PDBxFile.writeFile(fixer.topology, fixer.positions, f, True)
+            else:
+                if fixer.source is not None:
+                    f.write("REMARK   1 PDBFIXER FROM: %s\n" % fixer.source)
+                app.PDBFile.writeFile(fixer.topology, fixer.positions, f, True)
         if options.verbose: print('Done.')
 
 if __name__ == '__main__':
