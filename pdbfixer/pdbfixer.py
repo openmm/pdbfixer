@@ -216,13 +216,13 @@ def _overlayPoints(points1, points2):
 
     Parameters
     ----------
-    points1 (numpy array of openmm.unit.Quantity with units compatible with distance) - reference set of coordinates
-    points2 (numpy array of openmm.unit.Quantity with units compatible with distance) - set of coordinates to be rotated
+    points1 (list of Vec3, in nm) - reference set of coordinates
+    points2 (list of Vec3, in nm) - set of coordinates to be rotated
 
     Returns
     -------
     translate2 - vector to translate points2 by in order to center it
-    rotate - rotation matrix to apply to centered points2 to map it on to points1
+    rotate - proper rotation matrix (det = +1) to apply to centered points2 to map it on to points1
     center1 - center of points1
 
     Notes
@@ -234,7 +234,7 @@ def _overlayPoints(points1, points2):
     if len(points1) == 0:
         return (mm.Vec3(0, 0, 0), np.identity(3), mm.Vec3(0, 0, 0))
     if len(points1) == 1:
-        return (points1[0], np.identity(3), -1*points2[0])
+        return (-1*points2[0], np.identity(3), points1[0])
 
     # Compute centroids.
 
@@ -251,10 +251,15 @@ def _overlayPoints(points1, points2):
             for j in range(3):
                 R[i][j] += y[i]*x[j]
 
-    # Use an SVD to compute the rotation matrix.
+    # Use an SVD to compute the rotation matrix.  If the best fit is a reflection, flip the
+    # direction with the smallest singular value (the last one) so the result is a proper
+    # rotation; otherwise nearly coplanar points can map a template onto its mirror image.
 
-    (u, s, v) = lin.svd(R)
-    return (-1*center2, np.dot(u, v).transpose(), center1)
+    (u, _, vh) = lin.svd(R)
+    d = np.sign(lin.det(u)*lin.det(vh))
+    rotate = np.dot(np.dot(u, np.diag([1, 1, d])), vh).transpose()
+
+    return (-1*center2, rotate, center1)
 
 def _dihedralRotation(points, angle):
     """Given four points that form a dihedral, compute the matrix that rotates the last point around the axis to
@@ -647,10 +652,13 @@ class PDBFixer(object):
 
                     template = self._getTemplate(residue.name)
                     atomPositions = dict((atom.name, self.positions[atom.index]) for atom in residue.atoms())
+                    # Backbone oxygens depend on psi and can tilt the fit enough to put a
+                    # missing side chain on the wrong side of the N-CA-C plane.
+                    skip = ('O', 'OXT') if all(name in atomPositions for name in ('N', 'CA', 'C')) else ()
                     points1 = []
                     points2 = []
                     for atom in template.topology.atoms():
-                        if atom.name in atomPositions:
+                        if atom.name in atomPositions and atom.name not in skip:
                             points1.append(atomPositions[atom.name].value_in_unit(unit.nanometer))
                             points2.append(template.positions[atom.index].value_in_unit(unit.nanometer))
 
