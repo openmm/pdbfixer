@@ -222,7 +222,7 @@ def _overlayPoints(points1, points2):
     Returns
     -------
     translate2 - vector to translate points2 by in order to center it
-    rotate - rotation matrix to apply to centered points2 to map it on to points1
+    rotate - proper rotation matrix (det = +1) to apply to centered points2 to map it onto points1
     center1 - center of points1
 
     Notes
@@ -251,10 +251,15 @@ def _overlayPoints(points1, points2):
             for j in range(3):
                 R[i][j] += y[i]*x[j]
 
-    # Use an SVD to compute the rotation matrix.
+    # Use an SVD to compute the rotation matrix.  If the best fit is a reflection, flip the
+    # direction with the smallest singular value (the last one) so the result is a proper
+    # rotation; otherwise nearly coplanar points can map a template onto its mirror image.
 
-    (u, s, v) = lin.svd(R)
-    return (-1*center2, np.dot(u, v).transpose(), center1)
+    (u, _, vh) = lin.svd(R)
+    d = np.sign(lin.det(u)*lin.det(vh))
+    rotate = np.dot(np.dot(u, np.diag([1, 1, d])), vh).transpose()
+
+    return (-center2, rotate, center1)
 
 def _dihedralRotation(points, angle):
     """Given four points that form a dihedral, compute the matrix that rotates the last point around the axis to
