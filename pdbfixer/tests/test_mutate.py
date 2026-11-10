@@ -53,6 +53,25 @@ def test_mutate_4_fails():
         fixer = pdbfixer.PDBFixer(pdbid='1VII')
         fixer.applyMutations(["ALA-1000-GLY", "SER-56-ALA"], "A")
 
+def test_mutate_insertion_code():
+    """Test mutating residues in a chain that uses insertion codes."""
+    fixer = pdbfixer.PDBFixer(pdbid='1S9V')
+
+    # Chain A contains both TYR 9 and GLY 9A.
+
+    fixer.applyMutations(["TYR-9-ALA", "GLY-9A-SER"], "A")
+    chain = [chain for chain in fixer.topology.chains() if chain.id == "A"][0]
+    residues = dict(((residue.id, residue.insertionCode.strip()), residue) for residue in chain.residues())
+    assert residues[("9", "")].name == "ALA"
+    assert residues[("9", "A")].name == "SER"
+    assert set(atom.name for atom in residues[("9", "")].atoms()) == set(["N", "CA", "C", "O", "CB"])
+    assert set(atom.name for atom in residues[("9", "A")].atoms()) == set(["N", "CA", "C", "O"])
+
+def test_mutate_insertion_code_fails():
+    with raises(KeyError):
+        fixer = pdbfixer.PDBFixer(pdbid='1S9V')
+        fixer.applyMutations(["GLY-9B-ALA"], "A")
+
 def test_mutate_multiple_copies_of_chain_A():
     fixer = pdbfixer.PDBFixer(pdbid='1OL5')
     fixer.applyMutations(['TPO-287-THR','TPO-288-THR'], "A")

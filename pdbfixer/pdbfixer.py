@@ -1024,7 +1024,9 @@ class PDBFixer(object):
         mutations : list of strings
             Each string must include the resName (original), index,
             and resName (target).  For example, ALA-133-GLY will mutate
-            alanine 133 to glycine.
+            alanine 133 to glycine.  If the residue has an insertion code,
+            append it to the index.  For example, GLY-9A-ALA will mutate
+            glycine 9A to alanine.
         chain_id : str
             String based chain ID of the single chain you wish to mutate.
 
@@ -1055,25 +1057,29 @@ class PDBFixer(object):
         """
         # Retrieve all residues that match the specified chain_id.
         # NOTE: Multiple chains may have the same chainid, but must have unique resSeq entries.
-        resSeq_to_residue = dict() # resSeq_to_residue[resid] is the residue in the requested chain corresponding to residue identifier 'resid'
+        resSeq_to_residue = dict() # resSeq_to_residue[(resid, insertionCode)] is the residue in the requested chain corresponding to residue identifier 'resid' and insertion code 'insertionCode'
         for chain in self.topology.chains():
             if chain.id == chain_id:
                 for residue in chain.residues():
-                    resSeq_to_residue[int(residue.id)] = residue
+                    resSeq_to_residue[(int(residue.id), residue.insertionCode.strip())] = residue
 
         # Make a map of residues to mutate based on requested mutation list.
         residue_map = dict() # residue_map[residue] is the name of the new residue to mutate to, if a mutation is desired
         for mut_str in mutations:
             old_name, resSeq, new_name = mut_str.split("-")
+            insertionCode = ''
+            if not resSeq[-1].isdigit():
+                # The index ends with an insertion code.
+                resSeq, insertionCode = resSeq[:-1], resSeq[-1]
             resSeq = int(resSeq)
 
-            if resSeq not in resSeq_to_residue:
-                raise(KeyError("Cannot find chain %s residue %d in system!" % (chain_id, resSeq)))
+            if (resSeq, insertionCode) not in resSeq_to_residue:
+                raise(KeyError("Cannot find chain %s residue %d%s in system!" % (chain_id, resSeq, insertionCode)))
 
-            residue = resSeq_to_residue[resSeq] # retrieve the requested residue
+            residue = resSeq_to_residue[(resSeq, insertionCode)] # retrieve the requested residue
 
             if residue.name != old_name:
-                raise(ValueError("You asked to mutate chain %s residue %d name %s, but that residue is actually %s!" % (chain_id, resSeq, old_name, residue.name)))
+                raise(ValueError("You asked to mutate chain %s residue %d%s name %s, but that residue is actually %s!" % (chain_id, resSeq, insertionCode, old_name, residue.name)))
 
             if self._getTemplate(new_name) is None:
                 # Try to download a template from the PDB.
