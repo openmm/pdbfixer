@@ -60,12 +60,15 @@ def test_mutate_insertion_code():
     # Chain A contains both TYR 9 and GLY 9A.
 
     fixer.applyMutations(["TYR-9-ALA", "GLY-9A-SER"], "A")
+    fixer.findMissingResidues()
+    fixer.findMissingAtoms()
+    fixer.addMissingAtoms()
     chain = [chain for chain in fixer.topology.chains() if chain.id == "A"][0]
     residues = dict(((residue.id, residue.insertionCode.strip()), residue) for residue in chain.residues())
     assert residues[("9", "")].name == "ALA"
     assert residues[("9", "A")].name == "SER"
     assert set(atom.name for atom in residues[("9", "")].atoms()) == set(["N", "CA", "C", "O", "CB"])
-    assert set(atom.name for atom in residues[("9", "A")].atoms()) == set(["N", "CA", "C", "O"])
+    assert set(atom.name for atom in residues[("9", "A")].atoms()) == set(["N", "CA", "C", "O", "CB", "OG"])
 
 def test_mutate_insertion_code_fails():
     with raises(KeyError):

@@ -1056,7 +1056,7 @@ class PDBFixer(object):
 
         """
         # Retrieve all residues that match the specified chain_id.
-        # NOTE: Multiple chains may have the same chainid, but must have unique resSeq entries.
+        # NOTE: Multiple chains may have the same chainid, but must have unique combinations of resSeq and insertion code.
         resSeq_to_residue = dict() # resSeq_to_residue[(resid, insertionCode)] is the residue in the requested chain corresponding to residue identifier 'resid' and insertion code 'insertionCode'
         for chain in self.topology.chains():
             if chain.id == chain_id:
