@@ -777,7 +777,7 @@ class PDBFixer(object):
 
             # Create the new residue.
 
-            newResidue = chain.topology.addResidue(residueName, chain, "%d" % ((firstIndex+i)%10000))
+            newResidue = chain.topology.addResidue(residueName, chain, str(firstIndex+i))
             fraction = (i+1.0)/(numResidues+1.0)
             translate = startPosition + (endPosition-startPosition)*fraction + loopHeight*math.sin(fraction*math.pi)*loopDirection
             templateAtoms = list(template.topology.atoms())
